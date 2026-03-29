@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "lib": ["ES2020", "DOM"],
+    "strict": true
+  }
+}
