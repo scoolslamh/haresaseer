@@ -4,6 +4,36 @@ import { School } from '../types';
 import { normalizeArabicText } from '../utils/arabicUtils';
 
 export class DashboardService {
+  private static async getAllLinkedGuardSchoolIds(): Promise<Set<string>> {
+    let page = 0;
+    const pageSize = 1000;
+    const schoolIds = new Set<string>();
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('guards')
+        .select('school_id')
+        .not('school_id', 'is', null)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) {
+        throw new Error(`خطأ في جلب روابط الحراس بالمدارس: ${error.message}`);
+      }
+
+      const pageData = data || [];
+      pageData.forEach((guard) => {
+        if (guard.school_id) {
+          schoolIds.add(guard.school_id);
+        }
+      });
+
+      if (pageData.length < pageSize) break;
+      page++;
+    }
+
+    return schoolIds;
+  }
+
   static async getDashboardStats(): Promise<DashboardStats> {
     try {
       console.log('🔄 بدء جلب إحصائيات لوحة القيادة...');
@@ -56,6 +86,18 @@ export class DashboardService {
       // حساب العدد الإجمالي للمدارس من البيانات المجلبة الفعلية
       const actualTotalSchools = allSchoolsData?.length || 0;
       console.log(`🏫 العدد الفعلي للمدارس النشطة: ${actualTotalSchools}`);
+
+      const linkedGuardSchoolIds = await this.getAllLinkedGuardSchoolIds();
+      const actualSchoolsWithGuards = allSchoolsData.filter((school) =>
+        linkedGuardSchoolIds.has(school.id)
+      ).length;
+      const actualSchoolsWithoutGuards = actualTotalSchools - actualSchoolsWithGuards;
+
+      console.log('🔗 إحصائية ربط المدارس الفعلية:', {
+        linkedSchoolIds: linkedGuardSchoolIds.size,
+        actualSchoolsWithGuards,
+        actualSchoolsWithoutGuards
+      });
 
       if (statsError || !dashboardStats || dashboardStats.length === 0) {
         console.warn('⚠️ فشل في استخدام الدالة المحسنة، سيتم استخدام الطريقة التقليدية:', statsError);
@@ -118,8 +160,8 @@ export class DashboardService {
         femaleGuards = genderData?.filter(g => g.gender === 'أنثى').length || 0;
         insuredGuards = insuranceData?.filter(g => g.insurance === 'نعم').length || 0;
         uninsuredGuards = insuranceData?.filter(g => g.insurance === 'لا').length || 0;
-        schoolsWithGuardsCount = uniqueSchoolsWithGuards.size;
-        schoolsWithoutGuardsCount = totalSchools - schoolsWithGuardsCount;
+        schoolsWithGuardsCount = actualSchoolsWithGuards;
+        schoolsWithoutGuardsCount = actualSchoolsWithoutGuards;
         activeGuardsCount = activeGuards || 0;
         
         console.log('📊 النتائج النهائية (الطريقة التقليدية):');
@@ -137,8 +179,8 @@ export class DashboardService {
         femaleGuards = Number(stats.female_guards);
         insuredGuards = Number(stats.insured_guards);
         uninsuredGuards = Number(stats.uninsured_guards);
-        schoolsWithGuardsCount = Number(stats.schools_with_guards);
-        schoolsWithoutGuardsCount = Number(stats.schools_without_guards);
+        schoolsWithGuardsCount = actualSchoolsWithGuards;
+        schoolsWithoutGuardsCount = actualSchoolsWithoutGuards;
         
         console.log('📊 النتائج النهائية (الدالة المحسنة):');
         console.log(`   إجمالي المدارس: ${totalSchools}`);
