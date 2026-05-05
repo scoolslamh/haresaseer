@@ -74,16 +74,35 @@ export class SchoolService {
   }
 
   static async getAllSchools(): Promise<School[]> {
-    const { data, error } = await supabase
-      .from('schools')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const pageSize = 1000;
+    let page = 0;
+    let allSchools: School[] = [];
 
-    if (error) {
-      throw new Error(`خطأ في جلب بيانات المدارس: ${error.message}`);
+    while (true) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error } = await supabase
+        .from('schools')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        throw new Error(`خطأ في جلب بيانات المدارس: ${error.message}`);
+      }
+
+      const schoolsPage = data || [];
+      allSchools = [...allSchools, ...schoolsPage];
+
+      if (schoolsPage.length < pageSize) {
+        break;
+      }
+
+      page++;
     }
 
-    return data || [];
+    return allSchools;
   }
 
   static async getSchoolById(id: string): Promise<School | null> {

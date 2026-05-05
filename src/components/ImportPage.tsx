@@ -17,6 +17,19 @@ interface ImportData {
   guards: any[];
 }
 
+const cleanImportText = (value: any): string => {
+  if (value === null || value === undefined) return '';
+  return String(value).trim().replace(/\s+/g, ' ');
+};
+
+const makeSchoolKey = (schoolName: any, region: any, governorate: any = ''): string => {
+  const parts = [schoolName, region, governorate].map((part) =>
+    normalizeArabicText(cleanImportText(part)).toLowerCase()
+  );
+
+  return parts.join('|');
+};
+
 const ImportPage = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -471,15 +484,21 @@ const ImportPage = () => {
         }
         
         const row = rows[i];
+        const normalizedRow = Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [
+            cleanImportText(key),
+            typeof value === 'string' ? cleanImportText(value) : value
+          ])
+        );
 
         // معالجة وتنسيق البيانات
         const processedRow = {
-          ...row,
-          'تاريخ الميلاد': parseExcelDate(row['تاريخ الميلاد']),
-          'تاريخ المباشرة': parseExcelDate(row['تاريخ المباشرة']) || new Date().toISOString().split('T')[0],
-          'رقم الجوال': formatPhoneNumber(row['رقم الجوال']),
-          'جوال المدير': formatPhoneNumber(row['جوال المدير']),
-          'الآيبان': formatIBAN(row['الآيبان'])
+          ...normalizedRow,
+          'تاريخ الميلاد': parseExcelDate(normalizedRow['تاريخ الميلاد']),
+          'تاريخ المباشرة': parseExcelDate(normalizedRow['تاريخ المباشرة']) || new Date().toISOString().split('T')[0],
+          'رقم الجوال': formatPhoneNumber(normalizedRow['رقم الجوال']),
+          'جوال المدير': formatPhoneNumber(normalizedRow['جوال المدير']),
+          'الآيبان': formatIBAN(normalizedRow['الآيبان'])
         };
 
         // معالجة بيانات الحارس
@@ -500,7 +519,11 @@ const ImportPage = () => {
             iban: processedRow['الآيبان'] || '',
             status: processedRow['حالة الحارس'] || 'على رأس العمل',
             notes: processedRow['ملاحظات الحارس'] || '',
-            school_key: `${processedRow['اسم المدرسة']}-${processedRow['المنطقة']}-${processedRow['المحافظة'] || ''}`
+            school_key: makeSchoolKey(
+              processedRow['اسم المدرسة'],
+              processedRow['المنطقة'],
+              processedRow['المحافظة']
+            )
           });
         }
 
@@ -510,7 +533,11 @@ const ImportPage = () => {
         warnings.push(...schoolValidation.warnings);
 
         if (schoolValidation.isValid) {
-          const schoolKey = `${processedRow['اسم المدرسة']}-${processedRow['المنطقة']}-${processedRow['المحافظة'] || ''}`;
+          const schoolKey = makeSchoolKey(
+            processedRow['اسم المدرسة'],
+            processedRow['المنطقة'],
+            processedRow['المحافظة']
+          );
           if (!schoolKeys.has(schoolKey)) {
             schoolKeys.add(schoolKey);
             schools.push({
@@ -577,7 +604,18 @@ const ImportPage = () => {
       
       // إنشاء المدارس أولاً
       const schoolMap = new Map<string, string>();
+      const schoolImportErrors: string[] = [];
+      const guardImportErrors: string[] = [];
+      let createdSchoolsCount = 0;
       const totalSchools = processedData.validSchools.length;
+
+      const existingSchools = await SchoolService.getAllSchools();
+      existingSchools.forEach((school) => {
+        schoolMap.set(
+          makeSchoolKey(school.school_name, school.region, school.governorate),
+          school.id
+        );
+      });
       
       for (let i = 0; i < processedData.validSchools.length; i++) {
         const school = processedData.validSchools[i];
@@ -590,22 +628,30 @@ const ImportPage = () => {
         }
         
         try {
+          const schoolKey = makeSchoolKey(school.school_name, school.region, school.governorate);
+          if (schoolMap.has(schoolKey)) {
+            continue;
+          }
+
           const createdSchool = await SchoolService.createSchool(school);
-          const schoolKey = `${school.school_name}-${school.region}-${school.governorate}`;
           schoolMap.set(schoolKey, createdSchool.id);
+          createdSchoolsCount++;
         } catch (error: any) {
           if (error.message?.includes('duplicate')) {
             // المدرسة موجودة، نحصل على معرفها
-            const existingSchools = await SchoolService.getAllSchools();
-            const existingSchool = existingSchools.find(s => 
-              normalizeArabicText(s.school_name) === normalizeArabicText(school.school_name) && 
-              normalizeArabicText(s.region) === normalizeArabicText(school.region) && 
-              normalizeArabicText(s.governorate) === normalizeArabicText(school.governorate)
+            const refreshedSchools = await SchoolService.getAllSchools();
+            const existingSchool = refreshedSchools.find(s => 
+              makeSchoolKey(s.school_name, s.region, s.governorate) ===
+              makeSchoolKey(school.school_name, school.region, school.governorate)
             );
             if (existingSchool) {
-              const schoolKey = `${school.school_name}-${school.region}-${school.governorate}`;
+              const schoolKey = makeSchoolKey(school.school_name, school.region, school.governorate);
               schoolMap.set(schoolKey, existingSchool.id);
+            } else {
+              schoolImportErrors.push(`${school.school_name}: موجودة مسبقاً لكن تعذر العثور عليها للربط`);
             }
+          } else {
+            schoolImportErrors.push(`${school.school_name}: ${error.message || 'تعذر إنشاء المدرسة'}`);
           }
         }
       }
@@ -639,8 +685,9 @@ const ImportPage = () => {
           
           await GuardService.createGuard(guardData);
           successCount++;
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error creating guard:', error);
+          guardImportErrors.push(`${guard.guard_name}: ${error.message || 'تعذر إنشاء الحارس'}`);
         }
       }
 
@@ -650,15 +697,18 @@ const ImportPage = () => {
       // تسجيل العملية
       await OperationService.logOperation(
         'إضافة حارس',
-        `تم استيراد ${successCount} حارس و ${processedData.validSchools.length} مدرسة من ملف ${file?.name}`
+        `تم استيراد ${successCount} حارس و ${processedData.validSchools.length} مدرسة (${createdSchoolsCount} جديدة) من ملف ${file?.name}`
       );
 
       setImportProgress(100);
       setCurrentStep('اكتمال الاستيراد');
       
       setImportResult({
-        success: true,
-        message: `تم استيراد ${successCount} حارس و ${processedData.validSchools.length} مدرسة بنجاح`
+        success: schoolImportErrors.length === 0 && guardImportErrors.length === 0,
+        message:
+          schoolImportErrors.length === 0 && guardImportErrors.length === 0
+            ? `تم استيراد ${successCount} حارس و ${processedData.validSchools.length} مدرسة بنجاح (${createdSchoolsCount} جديدة)`
+            : `تم استيراد ${successCount} حارس و ${processedData.validSchools.length} مدرسة، مع وجود ${schoolImportErrors.length + guardImportErrors.length} خطأ`
       });
 
       // إعادة تعيين النموذج
