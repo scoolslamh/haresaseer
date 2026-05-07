@@ -64,7 +64,7 @@ const ImportPage = () => {
         'فئة التعيين': 'المستخدمين',
         'الجنس': 'ذكر',
         'تاريخ الميلاد': '1985-05-15',
-        'التأمينات': 'نعم',
+        'التأمينات': 'يصرف بدل',
         'تاريخ المباشرة': '2020-01-01',
         'رقم الجوال': '0501234567',
         'الآيبان': 'SA1234567890123456789012',
@@ -86,7 +86,7 @@ const ImportPage = () => {
         'فئة التعيين': 'بند الأجور',
         'الجنس': 'أنثى',
         'تاريخ الميلاد': '1990-03-10',
-        'التأمينات': 'نعم',
+        'التأمينات': 'يصرف بدل',
         'تاريخ المباشرة': '2021-02-15',
         'رقم الجوال': '0505566778',
         'الآيبان': 'SA5544332211009988776655',
@@ -404,15 +404,15 @@ const ImportPage = () => {
       errors.push(`الصف ${rowIndex + 2}: الجنس يجب أن يكون "ذكر" أو "أنثى"`);
     }
 
-    if (row['حالة الحارس'] && !GUARD_STATUSES.includes(row['حالة الحارس'])) {
+    if (row['حاله الحارس'] && !GUARD_STATUSES.includes(row['حاله الحارس'])) {
       errors.push(`الصف ${rowIndex + 2}: حالة الحارس غير صحيحة. القيم المقبولة: ${GUARD_STATUSES.join(', ')}`);
     }
 
-    if (row['فئة التعيين'] && !APPOINTMENT_CATEGORIES.includes(row['فئة التعيين'])) {
+    if (row['فئه التعيين'] && !APPOINTMENT_CATEGORIES.includes(row['فئه التعيين'])) {
       errors.push(`الصف ${rowIndex + 2}: فئة التعيين يجب أن تكون "المستخدمين" أو "بند الأجور"`);
     }
 
-    if (row['التأمينات'] && !INSURANCE_OPTIONS.includes(row['التأمينات'])) {
+    if (row['التامينات'] && !INSURANCE_OPTIONS.includes(row['التامينات'])) {
       errors.push(`الصف ${rowIndex + 2}: التأمينات يجب أن يكون "يصرف بدل" أو "لا يصرف"`);
     }
 
@@ -422,7 +422,7 @@ const ImportPage = () => {
     }
 
     // التحقق من رقم الجوال
-    const formattedPhone = formatPhoneNumber(row['رقم الجوال']);
+    const formattedPhone = formatPhoneNumber(row['رقم الجوال'] || '');
     if (row['رقم الجوال'] && !/^05\d{8}$/.test(formattedPhone)) {
       warnings.push(`الصف ${rowIndex + 2}: تنسيق رقم الجوال غير صحيح`);
     }
@@ -435,16 +435,16 @@ const ImportPage = () => {
     const warnings: string[] = [];
 
     // التحقق من الحقول المطلوبة
-    if (!row['المنطقة']) errors.push(`الصف ${rowIndex + 2}: المنطقة مطلوبة`);
-    if (!row['اسم المدرسة']) errors.push(`الصف ${rowIndex + 2}: اسم المدرسة مطلوب`);
+    if (!row['المنطقه']) errors.push(`الصف ${rowIndex + 2}: المنطقة مطلوبة`);
+    if (!row['اسم المدرسه']) errors.push(`الصف ${rowIndex + 2}: اسم المدرسة مطلوب`);
 
     // التحقق من صحة المنطقة
-    if (row['المنطقة'] && !REGIONS.includes(row['المنطقة'])) {
+    if (row['المنطقه'] && !REGIONS.includes(row['المنطقه'])) {
       errors.push(`الصف ${rowIndex + 2}: المنطقة يجب أن تكون إحدى: ${REGIONS.join(', ')}`);
     }
 
     // التحقق من رقم جوال المدير
-    const formattedPhone = formatPhoneNumber(row['جوال المدير']);
+    const formattedPhone = formatPhoneNumber(row['جوال المدير'] || '');
     if (row['جوال المدير'] && !/^05\d{8}$/.test(formattedPhone)) {
       warnings.push(`الصف ${rowIndex + 2}: تنسيق جوال المدير غير صحيح`);
     }
@@ -503,21 +503,23 @@ const ImportPage = () => {
         }
         
         const row = rows[i];
-        const normalizedRow = Object.fromEntries(
-          Object.entries(row).map(([key, value]) => [
-            cleanImportText(key),
-            typeof value === 'string' ? cleanImportText(value) : value
-          ])
-        );
+        const normalizedRow: Record<string, any> = {};
+        Object.entries(row).forEach(([key, value]) => {
+          const cleanKey = cleanImportText(key);
+          const val = typeof value === 'string' ? cleanImportText(value) : value;
+          normalizedRow[cleanKey] = val;
+          const normKey = normalizeArabicText(cleanKey);
+          if (normKey !== cleanKey) normalizedRow[normKey] = val;
+        });
 
         // معالجة وتنسيق البيانات
-        const processedRow = {
+        const processedRow: Record<string, any> = {
           ...normalizedRow,
           'تاريخ الميلاد': parseExcelDate(normalizedRow['تاريخ الميلاد']),
-          'تاريخ المباشرة': parseExcelDate(normalizedRow['تاريخ المباشرة']) || new Date().toISOString().split('T')[0],
+          'تاريخ المباشره': parseExcelDate(normalizedRow['تاريخ المباشره']) || new Date().toISOString().split('T')[0],
           'رقم الجوال': formatPhoneNumber(normalizedRow['رقم الجوال']),
           'جوال المدير': formatPhoneNumber(normalizedRow['جوال المدير']),
-          'الآيبان': formatIBAN(normalizedRow['الآيبان'])
+          'الايبان': formatIBAN(normalizedRow['الايبان'])
         };
 
         // معالجة بيانات الحارس
@@ -529,21 +531,21 @@ const ImportPage = () => {
           guards.push({
             guard_name: processedRow['اسم الحارس'],
             civil_id: processedRow['السجل المدني'] || '',
-            job_title: processedRow['المسمى الوظيفي'] || '',
-            rank: processedRow['المرتبة/الدرجة'] || '',
-            appointment_category: processedRow['فئة التعيين'] || '',
+            job_title: processedRow['المسمي الوظيفي'] || '',
+            rank: processedRow['المرتبه/الدرجه'] || '',
+            appointment_category: processedRow['فئه التعيين'] || '',
             gender: processedRow['الجنس'] || '',
             birth_date: processedRow['تاريخ الميلاد'],
-            insurance: processedRow['التأمينات'] || '',
-            start_date: processedRow['تاريخ المباشرة'],
+            insurance: processedRow['التامينات'] || '',
+            start_date: processedRow['تاريخ المباشره'],
             mobile: processedRow['رقم الجوال'] || '',
-            iban: processedRow['الآيبان'] || '',
-            status: processedRow['حالة الحارس'] || 'على رأس العمل',
+            iban: processedRow['الايبان'] || '',
+            status: processedRow['حاله الحارس'] || 'على رأس العمل',
             notes: processedRow['ملاحظات الحارس'] || '',
             school_key: makeSchoolKey(
-              processedRow['اسم المدرسة'],
-              processedRow['المنطقة'],
-              processedRow['المحافظة']
+              processedRow['اسم المدرسه'],
+              processedRow['المنطقه'],
+              processedRow['المحافظه']
             )
           });
         }
@@ -555,20 +557,20 @@ const ImportPage = () => {
 
         if (schoolValidation.isValid) {
           const schoolKey = makeSchoolKey(
-            processedRow['اسم المدرسة'],
-            processedRow['المنطقة'],
-            processedRow['المحافظة']
+            processedRow['اسم المدرسه'],
+            processedRow['المنطقه'],
+            processedRow['المحافظه']
           );
           if (!schoolKeys.has(schoolKey)) {
             schoolKeys.add(schoolKey);
             schools.push({
-              region: processedRow['المنطقة'],
-              governorate: processedRow['المحافظة'] || '',
-              school_name: processedRow['اسم المدرسة'],
+              region: processedRow['المنطقه'],
+              governorate: processedRow['المحافظه'] || '',
+              school_name: processedRow['اسم المدرسه'],
               principal_name: processedRow['اسم المدير'] || '',
               principal_mobile: processedRow['جوال المدير'] || '',
-              status: processedRow['حالة المدرسة'] || 'نشط',
-              notes: processedRow['ملاحظات المدرسة'] || ''
+              status: processedRow['حاله المدرسه'] || 'نشط',
+              notes: processedRow['ملاحظات المدرسه'] || ''
             });
           }
         }
