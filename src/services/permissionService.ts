@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Permission, UserPermission, PermissionModule } from '../types/permissions';
+import { Permission, PermissionModule } from '../types/permissions';
 
 export class PermissionService {
   // جلب جميع الصلاحيات
@@ -50,74 +50,40 @@ export class PermissionService {
   // جلب صلاحيات مستخدم معين
   static async getUserPermissions(userId: string): Promise<Permission[]> {
     try {
-      // استعلام واحد مدمج: user_permissions مع تفاصيل permissions
-      const { data, error } = await supabase
+      // الخطوة 1: جلب IDs الصلاحيات من user_permissions
+      const { data: upData, error: upError } = await supabase
         .from('user_permissions')
-        .select(`
-          permission_id,
-          permissions(id, name, display_name, description, module, created_at)
-        `)
+        .select('permission_id')
         .eq('user_id', userId);
 
-      if (error) {
-        if (error.code === '42P01' || error.code === 'PGRST200' || error.code === 'PGRST116') {
+      if (upError) {
+        if (upError.code === '42P01' || upError.code === 'PGRST116') {
           const { data: user } = await supabase
             .from('users').select('role').eq('id', userId).single();
           if (user?.role === 'admin') return this.getFallbackPermissions();
           return [];
         }
-        throw new Error(`خطأ في جلب صلاحيات المستخدم: ${error.message}`);
+        throw new Error(`خطأ في جلب صلاحيات المستخدم: ${upError.message}`);
       }
 
-      if (!data || data.length === 0) {
-        return [];
+      if (!upData || upData.length === 0) return [];
+
+      const permissionIds = upData.map(row => row.permission_id).filter(Boolean);
+      if (permissionIds.length === 0) return [];
+
+      // الخطوة 2: جلب تفاصيل الصلاحيات مباشرة من permissions
+      const { data: permsData, error: permsError } = await supabase
+        .from('permissions')
+        .select('id, name, display_name, description, module, created_at')
+        .in('id', permissionIds);
+
+      if (permsError) {
+        throw new Error(`خطأ في جلب تفاصيل الصلاحيات: ${permsError.message}`);
       }
 
-      // استخراج الصلاحيات من الاستعلام المدمج
-      const resolved: Permission[] = [];
-      const unresolvedIds: string[] = [];
-
-      for (const row of data) {
-        const perm = row.permissions as unknown as Permission | null;
-        if (perm && perm.id) {
-          resolved.push(perm);
-        } else {
-          unresolvedIds.push(row.permission_id);
-        }
-      }
-
-      // إذا لم يُحلّ بعض المعرّفات عبر الـ JOIN، ابحث في القائمة الاحتياطية أو استعلم مباشرة
-      if (unresolvedIds.length > 0) {
-        // محاولة 1: مطابقة مع القائمة الاحتياطية (في حال تطابقت UUIDs)
-        const fallback = this.getFallbackPermissions();
-        const fallbackMap = new Map(fallback.map(p => [p.id, p]));
-        const stillUnresolved: string[] = [];
-
-        for (const id of unresolvedIds) {
-          const found = fallbackMap.get(id);
-          if (found) {
-            resolved.push(found);
-          } else {
-            stillUnresolved.push(id);
-          }
-        }
-
-        // محاولة 2: استعلام مباشر على جدول permissions
-        if (stillUnresolved.length > 0) {
-          try {
-            const { data: directPerms } = await supabase
-              .from('permissions').select('*').in('id', stillUnresolved);
-            if (directPerms && directPerms.length > 0) {
-              resolved.push(...(directPerms as Permission[]));
-            }
-          } catch {
-            // تجاهل — اكتفينا بما وُجد
-          }
-        }
-      }
-
-      return resolved;
+      return (permsData as Permission[]) || [];
     } catch (error) {
+      console.error('خطأ في getUserPermissions:', error);
       try {
         const { data: user } = await supabase
           .from('users').select('role').eq('id', userId).single();
@@ -430,21 +396,20 @@ export class PermissionService {
       const { data, error } = await supabase
         .from('permissions')
         .select('*')
+        .in('name', names)
         .order('module, display_name');
 
       if (error) {
-        // Check if table doesn't exist
         if (error.code === '42P01') {
-          console.warn('Permissions table does not exist, using fallback permissions');
-          return this.getFallbackPermissions();
+          return this.getFallbackPermissions().filter(p => names.includes(p.name));
         }
         throw error;
       }
 
       return data || [];
     } catch (error: any) {
-      console.warn('Failed to fetch permissions from database, using fallback:', error.message);
-      return this.getFallbackPermissions();
+      console.warn('Failed to fetch permissions by names:', error.message);
+      return this.getFallbackPermissions().filter(p => names.includes(p.name));
     }
   }
 }

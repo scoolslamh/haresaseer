@@ -19,7 +19,7 @@ const GUARD_STATUSES = [
   'مكلف داخلي',
 ];
 const APPOINTMENT_CATEGORIES = ['المستخدمين', 'بند الأجور'];
-const INSURANCE_OPTIONS = ['نعم', 'لا'];
+const INSURANCE_OPTIONS = ['يصرف بدل', 'لا يصرف'];
 const REGIONS = ['عسير', 'جيزان', 'الباحة', 'نجران'];
 
 interface ImportData {
@@ -413,7 +413,7 @@ const ImportPage = () => {
     }
 
     if (row['التأمينات'] && !INSURANCE_OPTIONS.includes(row['التأمينات'])) {
-      errors.push(`الصف ${rowIndex + 2}: التأمينات يجب أن يكون "نعم" أو "لا"`);
+      errors.push(`الصف ${rowIndex + 2}: التأمينات يجب أن يكون "يصرف بدل" أو "لا يصرف"`);
     }
 
     // التحقق من تاريخ الميلاد
