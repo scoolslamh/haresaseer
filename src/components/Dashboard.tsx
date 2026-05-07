@@ -285,13 +285,13 @@ export const Dashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                إحصائيات التأمينات
+                إحصائيات البدل
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-                    <span className="text-gray-700">مسجل في التأمينات</span>
+                    <span className="text-gray-700">يصرف بدل</span>
                   </div>
                   <div className="text-left">
                     <span className="text-lg font-bold text-green-600">
@@ -305,7 +305,7 @@ export const Dashboard: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-                    <span className="text-gray-700">غير مسجل في التأمينات</span>
+                    <span className="text-gray-700">غير يصرف بدل</span>
                   </div>
                   <div className="text-left">
                     <span className="text-lg font-bold text-red-600">

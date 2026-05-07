@@ -47,7 +47,7 @@ export const GuardForm: React.FC<GuardFormProps> = ({
         civil_id: guard.civil_id,
         gender: guard.gender,
         birth_date: guard.birth_date,
-        insurance: guard.insurance,
+        insurance: (guard.insurance as string) === 'نعم' ? 'يصرف بدل' : (guard.insurance as string) === 'لا' ? 'لا يصرف' : guard.insurance,
         start_date: guard.start_date,
         mobile: guard.mobile,
         iban: guard.iban,

@@ -123,8 +123,8 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ stats }) => {
           </ResponsiveContainer>
         </Card>
 
-        {/* التأمين */}
-        <Card title="حالة التأمين" icon={<Shield className="text-green-600" />}>
+        {/* البدل */}
+        <Card title="حالة البدل" icon={<Shield className="text-green-600" />}>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie data={insuranceData} dataKey="value" innerRadius={60} outerRadius={90}>

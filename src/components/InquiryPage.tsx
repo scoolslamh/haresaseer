@@ -294,7 +294,7 @@ export const InquiryPage: React.FC = () => {
             <Shield className="w-8 h-8 text-green-600" />
             <div>
               <p className="text-2xl font-bold text-green-600">{overallStats.insured}</p>
-              <p className="text-sm text-gray-600">مسجل في التأمينات</p>
+              <p className="text-sm text-gray-600">يصرف بدل</p>
             </div>
           </div>
         </div>
@@ -304,7 +304,7 @@ export const InquiryPage: React.FC = () => {
             <Shield className="w-8 h-8 text-red-600" />
             <div>
               <p className="text-2xl font-bold text-red-600">{overallStats.uninsured}</p>
-              <p className="text-sm text-gray-600">غير مسجل في التأمينات</p>
+              <p className="text-sm text-gray-600">غير يصرف بدل</p>
             </div>
           </div>
         </div>
@@ -416,10 +416,10 @@ export const InquiryPage: React.FC = () => {
               </select>
             </div>
 
-            {/* التأمين */}
+            {/* البدل */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                التأمين
+                البدل
               </label>
               <select
                 value={filters.insurance}
@@ -490,7 +490,7 @@ export const InquiryPage: React.FC = () => {
                 <th className="px-4 py-3 text-right font-medium text-gray-700">المنطقة</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-700">المحافظة</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-700">الجنس</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">التأمين</th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">البدل</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-700">الجوال</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-700">الحالة</th>
                 <th className="px-4 py-3 text-right font-medium text-gray-700">الإجراءات</th>

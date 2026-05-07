@@ -48,33 +48,26 @@ export class UserService {
         throw new Error('كلمة المرور مطلوبة ويجب أن تكون 8 أحرف على الأقل');
       }
 
-      // استخدام supabase.functions.invoke يتجنب مشكلة ES256 JWT algorithm
-      // لأنه يضيف تلقائياً apikey + Authorization بالصيغة الصحيحة
-      const { data: result, error: invokeError } = await supabase.functions.invoke('create-auth-user', {
-        body: {
-          username: userData.username.trim(),
-          password: userData.plain_password.trim(),
-          role: userData.role,
-          full_name: userData.full_name.trim(),
-          email: userData.email?.trim() || null,
-          is_active: userData.is_active !== false
-        }
+      const { data: result, error } = await supabase.rpc('create_user_with_auth', {
+        p_username:  userData.username.trim(),
+        p_password:  userData.plain_password.trim(),
+        p_role:      userData.role,
+        p_full_name: userData.full_name.trim(),
+        p_email:     userData.email?.trim() || null,
+        p_is_active: userData.is_active !== false
       });
 
-      if (invokeError) {
-        // FunctionsHttpError يحمل رسالة الخطأ من الـ Edge Function
-        const errMsg = (invokeError as any).message || invokeError.toString() || 'خطأ في إنشاء المستخدم';
-        console.error('❌ خطأ من Edge Function:', errMsg);
-        throw new Error(errMsg);
-      }
-
-      if (result?.error) {
-        console.error('❌ خطأ منطقي من Edge Function:', result.error);
-        throw new Error(result.error);
+      if (error) {
+        const msg = error.message || 'خطأ في إنشاء المستخدم';
+        console.error('❌ خطأ في create_user_with_auth:', msg);
+        if (msg.includes('اسم المستخدم موجود')) throw new Error('اسم المستخدم موجود بالفعل');
+        if (msg.includes('البريد الإلكتروني مستخدم')) throw new Error('البريد الإلكتروني مستخدم بالفعل');
+        if (msg.includes('غير مصرح')) throw new Error('غير مصرح: يجب أن تكون مديراً لإنشاء مستخدمين');
+        throw new Error(msg);
       }
 
       console.log('✅ تم إنشاء المستخدم بنجاح:', result);
-      return result;
+      return result as User;
 
     } catch (error) {
       console.error('❌ خطأ عام في createUser:', error);

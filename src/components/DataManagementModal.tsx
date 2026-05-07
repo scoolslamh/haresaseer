@@ -4,14 +4,12 @@ import {
   Building2,
   X,
   Search,
-  Filter,
   Plus,
   Edit,
   Trash2,
   Eye,
   RefreshCw,
   Download,
-  Upload,
 } from "lucide-react";
 import { GuardService } from "../services/guardService";
 import { SchoolService } from "../services/schoolService";
@@ -22,7 +20,6 @@ import { AddSchoolModal } from "./AddSchoolModal";
 import { GuardDetailsModal } from "./GuardDetailsModal";
 import { ExportService } from "../services/exportService";
 import { Pagination } from "./Pagination";
-import { normalizeArabicText } from "../utils/arabicUtils";
 import { ConfirmationMessage } from "./ConfirmationMessage";
 import { OperationService } from "../services/operationService";
 
@@ -77,7 +74,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [confirmationType, setConfirmationType] = useState<'success' | 'error'>('success');
   const [localSchoolSearch, setLocalSchoolSearch] = useState("");
   const [guardsList, setGuardsList] = useState<any[]>([]);
-  const [guardsLoading, setGuardsLoading] = useState(false);
+  const [, setGuardsLoading] = useState(false);
   const [showSchoolGuardsModal, setShowSchoolGuardsModal] = useState(false);
   // تحميل البيانات عند تغيير الفلاتر أو التبويب
   useEffect(() => {
@@ -357,7 +354,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
     };
 
     if (guardFilters.region === "all") return [];
-    return governoratesByRegion[guardFilters.region] || [];
+    return governoratesByRegion[guardFilters.region as keyof typeof governoratesByRegion] || [];
   };
 
   return (
@@ -478,7 +475,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent text-sm disabled:bg-gray-100"
                     >
                       <option value="all">جميع المحافظات</option>
-                      {getUniqueGovernorates().map((gov) => (
+                      {getUniqueGovernorates().map((gov: string) => (
                         <option key={gov} value={gov}>
                           {gov}
                         </option>
@@ -505,7 +502,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      التأمين
+                      البدل
                     </label>
                     <select
                       value={guardFilters.insurance}
@@ -603,7 +600,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                           الجنس
                         </th>
                         <th className="px-4 py-3 text-right font-medium text-gray-700">
-                          التأمين
+                          البدل
                         </th>
                         <th className="px-4 py-3 text-right font-medium text-gray-700">
                           الحالة
@@ -678,7 +675,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   guard.insurance === "يصرف بدل"
                                     ? "bg-green-100 text-green-800"
-                                    : guard.insurance === "لا"
+                                    : guard.insurance === "لا يصرف"
                                       ? "bg-red-100 text-red-800"
                                       : "bg-gray-100 text-gray-800"
                                 }`}
@@ -1048,7 +1045,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
         {/* Modals */}
         {showGuardForm && (
           <GuardForm
-            guard={selectedGuard}
+            guard={selectedGuard ?? undefined}
             schools={[]} // سيتم جلبها داخل المكون
             onSubmit={handleGuardSubmit}
             onCancel={() => {
@@ -1060,7 +1057,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
 
         {showSchoolForm && (
           <AddSchoolModal
-            school={selectedSchool}
+            school={selectedSchool ?? undefined}
             onSubmit={handleSchoolSubmit}
             onClose={() => {
               setShowSchoolForm(false);
