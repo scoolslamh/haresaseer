@@ -1,8 +1,5 @@
 import { supabase } from '../lib/supabase';
 import { User, UserForm } from '../types';
-import { PermissionService } from './permissionService';
-import { PERMISSION_GROUPS } from '../types/permissions';
-import { normalizeArabicText } from '../utils/arabicUtils';
 import bcrypt from 'bcryptjs';
 
 export class UserService {
@@ -51,44 +48,32 @@ export class UserService {
         throw new Error('كلمة المرور مطلوبة ويجب أن تكون 8 أحرف على الأقل');
       }
 
-      // الحصول على URL Supabase الصحيح
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl) {
-        throw new Error('متغير البيئة VITE_SUPABASE_URL غير موجود');
-      }
-
-      // التحقق من وجود جلسة نشطة ورمز الوصول
-      const session = (await supabase.auth.getSession()).data.session;
-      if (!session || !session.access_token) {
-        throw new Error('لا توجد جلسة مستخدم نشطة. يرجى تسجيل الدخول مرة أخرى.');
-      }
-
-      // إرسال كلمة المرور عبر HTTPS إلى Edge Function التي تتولى التشفير
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-auth-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({
+      // استخدام supabase.functions.invoke يتجنب مشكلة ES256 JWT algorithm
+      // لأنه يضيف تلقائياً apikey + Authorization بالصيغة الصحيحة
+      const { data: result, error: invokeError } = await supabase.functions.invoke('create-auth-user', {
+        body: {
           username: userData.username.trim(),
           password: userData.plain_password.trim(),
           role: userData.role,
           full_name: userData.full_name.trim(),
           email: userData.email?.trim() || null,
           is_active: userData.is_active !== false
-        })
+        }
       });
 
-      const result = await response.json();
+      if (invokeError) {
+        // FunctionsHttpError يحمل رسالة الخطأ من الـ Edge Function
+        const errMsg = (invokeError as any).message || invokeError.toString() || 'خطأ في إنشاء المستخدم';
+        console.error('❌ خطأ من Edge Function:', errMsg);
+        throw new Error(errMsg);
+      }
 
-      if (!response.ok) {
-        console.error('❌ خطأ من Edge Function:', result.error);
-        throw new Error(result.error || 'خطأ غير معروف عند إنشاء المستخدم');
+      if (result?.error) {
+        console.error('❌ خطأ منطقي من Edge Function:', result.error);
+        throw new Error(result.error);
       }
 
       console.log('✅ تم إنشاء المستخدم بنجاح:', result);
-      
       return result;
 
     } catch (error) {
@@ -262,7 +247,7 @@ export class UserService {
   // دالة مساعدة للتحقق من الاتصال
   static async testConnection(): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('users')
         .select('count')
         .limit(1);

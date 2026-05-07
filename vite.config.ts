@@ -18,15 +18,28 @@ export default defineConfig({
   },
 
   build: {
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 1000,
 
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
-          charts: ['html2canvas'], // 🔥 فصل المكتبات الثقيلة
-        },
+        manualChunks(id) {
+          // مكتبات React الأساسية في chunk منفصل
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react';
+          }
+          // Supabase في chunk منفصل
+          if (id.includes('@supabase')) {
+            return 'vendor-supabase';
+          }
+          // مكتبات التصدير الثقيلة تُحمَّل عند الحاجة فقط
+          if (id.includes('xlsx') || id.includes('jspdf') || id.includes('jsPDF')) {
+            return 'vendor-export';
+          }
+          // lucide icons في chunk منفصل
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+        }
       },
     },
   },

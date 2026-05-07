@@ -22,7 +22,9 @@ export class ExportService {
         'المدير/ة': guard.school?.principal_name || '',
         'جوال المدير': guard.school?.principal_mobile || '',
         'السجل المدني': guard.civil_id || '',
-        'الملف': guard.file || '',
+        'المسمى الوظيفي': guard.job_title || '',
+        'المرتبة/الدرجة': guard.rank || '',
+        'فئة التعيين': guard.appointment_category || '',
         'الجنس': guard.gender || '',
         'تاريخ الميلاد': guard.birth_date || '',
         'التأمينات': guard.insurance || '',
@@ -48,7 +50,9 @@ export class ExportService {
         { wch: 20 }, // المدير
         { wch: 15 }, // جوال المدير
         { wch: 15 }, // السجل المدني
-        { wch: 15 }, // الملف
+        { wch: 20 }, // المسمى الوظيفي
+        { wch: 15 }, // المرتبة/الدرجة
+        { wch: 15 }, // فئة التعيين
         { wch: 10 }, // الجنس
         { wch: 15 }, // تاريخ الميلاد
         { wch: 10 }, // التأمينات

@@ -71,9 +71,8 @@ export const InquiryPage: React.FC = () => {
     loadData();
   }, []);
 
-  // تحديث localSearchTerm عند تغيير filters.search من مصدر خارجي (مثل clearFilters)
   useEffect(() => {
-    setLocalSearchTerm(filters.search);
+    setLocalSearchTerm(filters.search ?? '');
   }, [filters.search]);
 
   useEffect(() => {
@@ -450,9 +449,12 @@ export const InquiryPage: React.FC = () => {
               >
                 <option value="all">جميع الحالات</option>
                 <option value="على رأس العمل">على رأس العمل</option>
-                <option value="منقطع">منقطع</option>
-                <option value="مبعد عن المدارس">مبعد</option>
-                <option value="إجازة">إجازة</option>
+                <option value="إجازة أمومة/رعاية مولود">إجازة أمومة/رعاية مولود</option>
+                <option value="إجازة مرضية">إجازة مرضية</option>
+                <option value="إيقاف الراتب مؤقتاً">إيقاف الراتب مؤقتاً</option>
+                <option value="مجاز استثنائياً">مجاز استثنائياً</option>
+                <option value="مكفوف اليد">مكفوف اليد</option>
+                <option value="مكلف داخلي">مكلف داخلي</option>
               </select>
             </div>
           </div>
@@ -519,8 +521,8 @@ export const InquiryPage: React.FC = () => {
                           {guard.civil_id && (
                             <p className="text-xs text-gray-500">السجل: {guard.civil_id}</p>
                           )}
-                          {guard.file && (
-                            <p className="text-xs text-gray-500">الملف: {guard.file}</p>
+                          {guard.job_title && (
+                            <p className="text-xs text-gray-500">المسمى: {guard.job_title}</p>
                           )}
                         </div>
                       </div>
@@ -578,15 +580,13 @@ export const InquiryPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        guard.status === 'على رأس العمل' 
-                          ? 'bg-green-100 text-green-800' 
-                          : guard.status === 'منقطع'
+                        guard.status === 'على رأس العمل'
+                          ? 'bg-green-100 text-green-800'
+                          : guard.status === 'مكلف داخلي'
+                          ? 'bg-blue-100 text-blue-800'
+                          : guard.status === 'إيقاف الراتب مؤقتاً' || guard.status === 'مكفوف اليد'
                           ? 'bg-red-100 text-red-800'
-                          : guard.status === 'إجازة'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : guard.status === 'مستبعد'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {guard.status}
                       </span>
@@ -647,7 +647,7 @@ export const InquiryPage: React.FC = () => {
       {/* Modals */}
       {showGuardForm && (
         <GuardForm
-          guard={selectedGuard}
+          guard={selectedGuard ?? undefined}
           schools={schools}
           onSubmit={handleGuardSubmit}
           onCancel={() => {

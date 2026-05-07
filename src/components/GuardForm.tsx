@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Guard, GuardForm as GuardFormType, School } from '../types';
+import { Guard, GuardForm as GuardFormType, School, GUARD_STATUS_OPTIONS } from '../types';
 import { X, Save, User } from 'lucide-react';
 import { ConfirmationMessage } from './ConfirmationMessage';
 import { OperationService } from '../services/operationService';
@@ -29,7 +29,9 @@ export const GuardForm: React.FC<GuardFormProps> = ({
     start_date: new Date().toISOString().split('T')[0],
     mobile: '',
     iban: '',
-    file: '',
+    job_title: '',
+    rank: '',
+    appointment_category: '',
     status: 'على رأس العمل',
     notes: ''
   });
@@ -49,7 +51,9 @@ export const GuardForm: React.FC<GuardFormProps> = ({
         start_date: guard.start_date,
         mobile: guard.mobile,
         iban: guard.iban,
-        file: guard.file,
+        job_title: guard.job_title,
+        rank: guard.rank,
+        appointment_category: guard.appointment_category,
         status: guard.status,
         notes: guard.notes
       });
@@ -59,9 +63,7 @@ export const GuardForm: React.FC<GuardFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('🔄 بدء حفظ الحارس:', { isEditing: !!guard, formData });
-      const result = await onSubmit(formData);
-      console.log('✅ تم حفظ الحارس بنجاح');
+      await onSubmit(formData);
       
       // تسجيل العملية في سجل العمليات
       try {
@@ -164,17 +166,43 @@ export const GuardForm: React.FC<GuardFormProps> = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">الملف</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">المسمى الوظيفي</label>
                 <input
                   type="text"
-                  name="file"
-                  value={formData.file}
+                  name="job_title"
+                  value={formData.job_title}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
-                  placeholder="أدخل رقم أو اسم الملف (اختياري)"
+                  placeholder="أدخل المسمى الوظيفي"
                 />
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">المرتبة/الدرجة</label>
+                <input
+                  type="text"
+                  name="rank"
+                  value={formData.rank}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
+                  placeholder="أدخل المرتبة أو الدرجة"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">فئة التعيين</label>
+                <select
+                  name="appointment_category"
+                  value={formData.appointment_category}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
+                >
+                  <option value="">اختر فئة التعيين</option>
+                  <option value="المستخدمين">المستخدمين</option>
+                  <option value="بند الأجور">بند الأجور</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">الجنس</label>
                 <select
@@ -233,10 +261,9 @@ export const GuardForm: React.FC<GuardFormProps> = ({
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
                 >
-                  <option value="على رأس العمل">على رأس العمل</option>
-                  <option value="منقطع">منقطع</option>
-                  <option value="مبعد عن المدارس">مبعد</option>
-                  <option value="إجازة">إجازة</option>
+                  {GUARD_STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
             </div>

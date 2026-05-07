@@ -1,8 +1,273 @@
 import { supabase } from '../lib/supabase';
 import { Operation } from '../types';
 import { AuthService } from './authService';
+import { searchInArabicText } from '../utils/arabicUtils';
+
+export interface OperationFilters {
+  search?: string;
+  operationType?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  guardId?: string;
+}
+
+export interface OperationStats {
+  total: number;
+  transfers: number;
+  reassignments: number;
+  additions: number;
+  modifications: number;
+  deletions: number;
+  violations: number;
+  today: number;
+}
+
+const OPERATION_SELECT = `
+  id,
+  operation_type,
+  description,
+  guard_id,
+  school_from_id,
+  school_to_id,
+  performed_by,
+  created_at,
+  guard:guards(id, guard_name, civil_id, mobile, status),
+  school_from:school_from_id(id, school_name, region, governorate, principal_name),
+  school_to:school_to_id(id, school_name, region, governorate, principal_name),
+  user:users(id, full_name)
+`;
 
 export class OperationService {
+  private static applyOperationFilters(query: any, filters: OperationFilters = {}) {
+    if (filters.operationType && filters.operationType !== 'all') {
+      query = query.eq('operation_type', filters.operationType);
+    }
+
+    if (filters.guardId && filters.guardId !== 'all') {
+      query = query.eq('guard_id', filters.guardId);
+    }
+
+    if (filters.dateFrom) {
+      query = query.gte('created_at', `${filters.dateFrom}T00:00:00`);
+    }
+
+    if (filters.dateTo) {
+      query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
+    }
+
+    return query;
+  }
+
+  private static matchesSearch(operation: Operation, searchTerm: string): boolean {
+    if (!searchTerm.trim()) return true;
+
+    return (
+      searchInArabicText(operation.description || '', searchTerm) ||
+      searchInArabicText(operation.guard?.guard_name || '', searchTerm) ||
+      searchInArabicText(operation.school_from?.school_name || '', searchTerm) ||
+      searchInArabicText(operation.school_to?.school_name || '', searchTerm) ||
+      searchInArabicText(operation.user?.full_name || '', searchTerm)
+    );
+  }
+
+  private static calculateStats(operations: Operation[]): OperationStats {
+    const today = new Date().toDateString();
+
+    return {
+      total: operations.length,
+      transfers: operations.filter(op => op.operation_type === 'نقل').length,
+      reassignments: operations.filter(op => op.operation_type === 'إعادة توجيه').length,
+      additions: operations.filter(op => op.operation_type === 'إضافة حارس' || op.operation_type === 'إضافة مدرسة').length,
+      modifications: operations.filter(op => op.operation_type === 'تعديل بيانات').length,
+      deletions: operations.filter(op => op.operation_type === 'حذف حارس' || op.operation_type === 'حذف مدرسة' || op.operation_type === 'حذف مجموعة').length,
+      violations: operations.filter(op => op.operation_type === 'إضافة مخالفة').length,
+      today: operations.filter(op => new Date(op.created_at).toDateString() === today).length
+    };
+  }
+
+  private static async countOperations(filters: OperationFilters = {}, extra?: (query: any) => any): Promise<number> {
+    let query = supabase
+      .from('operations')
+      .select('id', { count: 'exact', head: true });
+
+    query = this.applyOperationFilters(query, filters);
+
+    if (extra) {
+      query = extra(query);
+    }
+
+    const { count, error } = await query;
+
+    if (error) {
+      throw new Error(`خطأ في حساب سجل العمليات: ${error.message}`);
+    }
+
+    return count || 0;
+  }
+
+  static async getOperationStats(filters: OperationFilters = {}): Promise<OperationStats> {
+    if (filters.search?.trim()) {
+      const operations = await this.getOperationsForSearch(filters);
+      return this.calculateStats(operations);
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const [
+      total,
+      transfers,
+      reassignments,
+      guardAdditions,
+      schoolAdditions,
+      modifications,
+      guardDeletions,
+      schoolDeletions,
+      bulkDeletions,
+      violations,
+      today
+    ] = await Promise.all([
+      this.countOperations(filters),
+      this.countOperations(filters, q => q.eq('operation_type', 'نقل')),
+      this.countOperations(filters, q => q.eq('operation_type', 'إعادة توجيه')),
+      this.countOperations(filters, q => q.eq('operation_type', 'إضافة حارس')),
+      this.countOperations(filters, q => q.eq('operation_type', 'إضافة مدرسة')),
+      this.countOperations(filters, q => q.eq('operation_type', 'تعديل بيانات')),
+      this.countOperations(filters, q => q.eq('operation_type', 'حذف حارس')),
+      this.countOperations(filters, q => q.eq('operation_type', 'حذف مدرسة')),
+      this.countOperations(filters, q => q.eq('operation_type', 'حذف مجموعة')),
+      this.countOperations(filters, q => q.eq('operation_type', 'إضافة مخالفة')),
+      this.countOperations(filters, q => q.gte('created_at', todayStart.toISOString()).lte('created_at', todayEnd.toISOString()))
+    ]);
+
+    return {
+      total,
+      transfers,
+      reassignments,
+      additions: guardAdditions + schoolAdditions,
+      modifications,
+      deletions: guardDeletions + schoolDeletions + bulkDeletions,
+      violations,
+      today
+    };
+  }
+
+  private static async getOperationsForSearch(filters: OperationFilters = {}): Promise<Operation[]> {
+    const pageSize = 1000;
+    let page = 0;
+    let allOperations: Operation[] = [];
+
+    while (true) {
+      let query = supabase
+        .from('operations')
+        .select(OPERATION_SELECT)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      query = this.applyOperationFilters(query, filters);
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`خطأ في جلب سجل العمليات: ${error.message}`);
+      }
+
+      const operationsPage = (data || []) as Operation[];
+      allOperations = [...allOperations, ...operationsPage];
+
+      if (operationsPage.length < pageSize) {
+        break;
+      }
+
+      page++;
+    }
+
+    return allOperations.filter(operation => this.matchesSearch(operation, filters.search || ''));
+  }
+
+  static async getFilteredOperations(
+    filters: OperationFilters = {},
+    page: number = 1,
+    itemsPerPage: number = 20
+  ): Promise<{ operations: Operation[]; totalCount: number; stats: OperationStats }> {
+    if (filters.search?.trim()) {
+      const filteredOperations = await this.getOperationsForSearch(filters);
+      const startIndex = (page - 1) * itemsPerPage;
+
+      return {
+        operations: filteredOperations.slice(startIndex, startIndex + itemsPerPage),
+        totalCount: filteredOperations.length,
+        stats: this.calculateStats(filteredOperations)
+      };
+    }
+
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage - 1;
+
+    let query = supabase
+      .from('operations')
+      .select(OPERATION_SELECT, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(startIndex, endIndex);
+
+    query = this.applyOperationFilters(query, filters);
+
+    const [{ data, error, count }, stats] = await Promise.all([
+      query,
+      this.getOperationStats(filters)
+    ]);
+
+    if (error) {
+      throw new Error(`خطأ في جلب سجل العمليات: ${error.message}`);
+    }
+
+    return {
+      operations: (data || []) as Operation[],
+      totalCount: count || 0,
+      stats
+    };
+  }
+
+  static async getOperationsForExport(filters: OperationFilters = {}): Promise<Operation[]> {
+    if (filters.search?.trim()) {
+      return this.getOperationsForSearch(filters);
+    }
+
+    const pageSize = 1000;
+    let page = 0;
+    let allOperations: Operation[] = [];
+
+    while (true) {
+      let query = supabase
+        .from('operations')
+        .select(OPERATION_SELECT)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      query = this.applyOperationFilters(query, filters);
+
+      const { data, error } = await query;
+
+      if (error) {
+        throw new Error(`خطأ في جلب سجل العمليات للتصدير: ${error.message}`);
+      }
+
+      const operationsPage = (data || []) as Operation[];
+      allOperations = [...allOperations, ...operationsPage];
+
+      if (operationsPage.length < pageSize) {
+        break;
+      }
+
+      page++;
+    }
+
+    return allOperations;
+  }
+
   static async getAllOperations(): Promise<Operation[]> {
     console.log('🔄 بدء جلب جميع العمليات من قاعدة البيانات...');
     const { data, error } = await supabase

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { GuardForm, School } from '../types';
-import { X, UserPlus, Save, User, School as SchoolIcon, Phone, CreditCard } from 'lucide-react';
+import { GuardForm, School, GUARD_STATUS_OPTIONS } from '../types';
+import { X, UserPlus, Save, User, Phone, CreditCard } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 
 interface AddGuardModalProps {
@@ -24,7 +24,9 @@ export const AddGuardModal: React.FC<AddGuardModalProps> = ({
     start_date: new Date().toISOString().split('T')[0],
     mobile: '',
     iban: '',
-    file: '',
+    job_title: '',
+    rank: '',
+    appointment_category: '',
     status: 'على رأس العمل',
     notes: ''
   });
@@ -134,17 +136,43 @@ export const AddGuardModal: React.FC<AddGuardModalProps> = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">الملف</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">المسمى الوظيفي</label>
                 <input
                   type="text"
-                  name="file"
-                  value={formData.file}
+                  name="job_title"
+                  value={formData.job_title}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="أدخل رقم أو اسم الملف (اختياري)"
+                  placeholder="أدخل المسمى الوظيفي"
                 />
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">المرتبة/الدرجة</label>
+                <input
+                  type="text"
+                  name="rank"
+                  value={formData.rank}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="أدخل المرتبة أو الدرجة"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">فئة التعيين</label>
+                <select
+                  name="appointment_category"
+                  value={formData.appointment_category}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="">اختر فئة التعيين</option>
+                  <option value="المستخدمين">المستخدمين</option>
+                  <option value="بند الأجور">بند الأجور</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">الجنس</label>
                 <select
@@ -203,10 +231,9 @@ export const AddGuardModal: React.FC<AddGuardModalProps> = ({
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 >
-                  <option value="على رأس العمل">على رأس العمل</option>
-                  <option value="منقطع">منقطع</option>
-                  <option value="مبعد عن المدارس">مبعد</option>
-                  <option value="إجازة">إجازة</option>
+                  {GUARD_STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
                 </select>
               </div>
             </div>

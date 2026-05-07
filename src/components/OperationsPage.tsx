@@ -47,6 +47,7 @@ export const OperationsPage: React.FC = () => {
   const [guards, setGuards] = useState<Guard[]>([]);
   const [schools, setSchools] = useState<SchoolType[]>([]);
   const [filteredOperations, setFilteredOperations] = useState<Operation[]>([]);
+  const [totalOperationsCount, setTotalOperationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -64,6 +65,7 @@ export const OperationsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [paginatedOperations, setPaginatedOperations] = useState<Operation[]>([]);
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
 
   const [filters, setFilters] = useState({
     search: '',
@@ -85,31 +87,75 @@ export const OperationsPage: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
+    loadGuardOptions();
   }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [operations, filters]);
+    if (localSearchTerm === filters.search) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setFilters(prev => ({
+        ...prev,
+        search: localSearchTerm
+      }));
+      setCurrentPage(1);
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [localSearchTerm, filters.search]);
 
   useEffect(() => {
-    applyPagination();
-  }, [filteredOperations, currentPage, itemsPerPage]);
+    loadData();
+  }, [filters, currentPage, itemsPerPage]);
+
+  useEffect(() => {
+    setLocalSearchTerm(filters.search);
+  }, [filters.search]);
+
+  const loadGuardOptions = async () => {
+    try {
+      const pageSize = 1000;
+      let page = 0;
+      let allGuards: Guard[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
+          .from('guards')
+          .select('id, school_id, guard_name, civil_id')
+          .order('guard_name')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        const guardsPage = (data || []) as Guard[];
+        allGuards = [...allGuards, ...guardsPage];
+
+        if (guardsPage.length < pageSize) break;
+        page++;
+      }
+
+      setGuards(allGuards);
+    } catch (err) {
+      console.error('خطأ في تحميل قائمة الحراس:', err);
+    }
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const [operationsData, guardsData, schoolsData] = await Promise.all([
-        OperationService.getAllOperations(),
-        GuardService.getAllGuards(),
-        SchoolService.getAllSchools()
-      ]);
+      const operationsResult = await OperationService.getFilteredOperations(
+        filters,
+        currentPage,
+        itemsPerPage
+      );
       
-      setOperations(operationsData);
-      setGuards(guardsData);
-      setSchools(schoolsData);
+      setOperations(operationsResult.operations);
+      setFilteredOperations(operationsResult.operations);
+      setPaginatedOperations(operationsResult.operations);
+      setTotalOperationsCount(operationsResult.totalCount);
+      setStats(operationsResult.stats);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
     } finally {
@@ -200,6 +246,8 @@ export const OperationsPage: React.FC = () => {
       dateTo: '',
       guardId: 'all'
     });
+    setLocalSearchTerm('');
+    setCurrentPage(1);
   };
 
   const handleViewOperation = (operation: Operation) => {
@@ -372,11 +420,12 @@ const handleTransferSubmit = async (
   const handleExport = async (format: 'excel' | 'pdf') => {
     try {
       setExporting(true);
+      const operationsToExport = await OperationService.getOperationsForExport(filters);
       
       if (format === 'excel') {
-        await ExportService.exportOperationsToExcel(filteredOperations, 'سجل_العمليات');
+        await ExportService.exportOperationsToExcel(operationsToExport, 'سجل_العمليات');
       } else {
-        await ExportService.exportOperationsToPDF(filteredOperations, 'سجل العمليات');
+        await ExportService.exportOperationsToPDF(operationsToExport, 'سجل العمليات');
       }
     } catch (err: any) {
       alert(err instanceof Error ? err.message : 'خطأ في التصدير');
@@ -615,8 +664,8 @@ const handleTransferSubmit = async (
               <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
+                value={localSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
                 placeholder="ابحث في الوصف، الاسم..."
                 className="w-full pr-10 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent text-sm"
               />
@@ -686,7 +735,7 @@ const handleTransferSubmit = async (
         <div className="flex flex-col sm:flex-row justify-end gap-3">
           <button
             onClick={() => handleExport('excel')}
-            disabled={exporting || filteredOperations.length === 0}
+            disabled={exporting || totalOperationsCount === 0}
             className="flex items-center gap-2 px-4 py-2 bg-moe-700 text-white rounded-xl transition-all text-sm shadow-md hover:shadow-lg hover:bg-moe-800"
           >
             <Download className="w-4 h-4" />
@@ -803,7 +852,7 @@ const handleTransferSubmit = async (
       {/* Pagination */}
       <Pagination
         currentPage={currentPage}
-        totalItems={filteredOperations.length}
+        totalItems={totalOperationsCount}
         itemsPerPage={itemsPerPage}
         onPageChange={handlePageChange}
         onItemsPerPageChange={handleItemsPerPageChange}
@@ -811,7 +860,7 @@ const handleTransferSubmit = async (
 
       {/* Results Summary */}
       <div className="text-center text-gray-600">
-        عرض {filteredOperations.length} من أصل {operations.length} عملية
+        عرض {operations.length} من أصل {totalOperationsCount} عملية
       </div>
 
       {/* Modals */}

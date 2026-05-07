@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
-import { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Guard, School as SchoolType } from '../types';
-import { X, ArrowRightLeft, User, School, Save } from 'lucide-react';
+import { X, ArrowRightLeft, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { GuardService } from '../services/guardService';
-import { SchoolService } from '../services/schoolService';
 import { ConfirmationMessage } from './ConfirmationMessage';
 
 interface TransferGuardModalProps {
@@ -15,6 +12,8 @@ interface TransferGuardModalProps {
   onClose: () => void;
 }
 
+const PAGE_LIMIT = 50;
+
 export const TransferGuardModal: React.FC<TransferGuardModalProps> = ({
   guard,
   guards: initialGuards,
@@ -22,166 +21,162 @@ export const TransferGuardModal: React.FC<TransferGuardModalProps> = ({
   onSubmit,
   onClose
 }) => {
-  const [allGuards, setAllGuards] = useState<Guard[]>(initialGuards);
-  const [allSchools, setAllSchools] = useState<SchoolType[]>(initialSchools);
-  const [filteredGuards, setFilteredGuards] = useState<Guard[]>([]);
-  const [filteredSchools, setFilteredSchools] = useState<SchoolType[]>([]);
+  const [guardOptions, setGuardOptions] = useState<Guard[]>(initialGuards.slice(0, PAGE_LIMIT));
+  const [schoolOptions, setSchoolOptions] = useState<SchoolType[]>(initialSchools.slice(0, PAGE_LIMIT));
   const [guardSearchTerm, setGuardSearchTerm] = useState('');
   const [schoolSearchTerm, setSchoolSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
-  
+  const [searchingGuards, setSearchingGuards] = useState(false);
+  const [searchingSchools, setSearchingSchools] = useState(false);
+
   const [formData, setFormData] = useState({
     guardId: guard?.id || '',
     newSchoolId: '',
     description: ''
   });
+
+  const [selectedGuard, setSelectedGuard] = useState<Guard | null>(guard || null);
+  const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
   const [confirmationType, setConfirmationType] = useState<'success' | 'error'>('success');
 
-  // تحميل جميع البيانات عند فتح المودال
   useEffect(() => {
-    loadAllData();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      searchAssignedGuards(guardSearchTerm);
+    }, 300);
 
-  // تطبيق البحث على الحراس
+    return () => window.clearTimeout(timeoutId);
+  }, [guardSearchTerm]);
+
   useEffect(() => {
-    if (!guardSearchTerm.trim()) {
-      setFilteredGuards(allGuards.filter(g => g.school_id)); // فقط الحراس المسندين
-    } else {
-      const searchLower = guardSearchTerm.toLowerCase();
-      setFilteredGuards(
-        allGuards
-          .filter(g => g.school_id) // فقط الحراس المسندين
-          .filter(g => 
-            g.guard_name.toLowerCase().includes(searchLower) ||
-            g.school?.school_name?.toLowerCase().includes(searchLower) ||
-            g.school?.region?.toLowerCase().includes(searchLower) ||
-            g.civil_id?.toLowerCase().includes(searchLower)
-          )
-      );
+    const timeoutId = window.setTimeout(() => {
+      searchSchools(schoolSearchTerm);
+    }, 300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [schoolSearchTerm]);
+
+  useEffect(() => {
+    if (guard?.id) {
+      loadGuardById(guard.id);
     }
-  }, [allGuards, guardSearchTerm]);
+  }, [guard?.id]);
 
-  // تطبيق البحث على المدارس
-  useEffect(() => {
-    if (!schoolSearchTerm.trim()) {
-      setFilteredSchools(allSchools);
-    } else {
-      const searchLower = schoolSearchTerm.toLowerCase();
-      setFilteredSchools(
-        allSchools.filter(s => 
-          s.school_name.toLowerCase().includes(searchLower) ||
-          s.region.toLowerCase().includes(searchLower) ||
-          s.governorate.toLowerCase().includes(searchLower)
-        )
-      );
-    }
-  }, [allSchools, schoolSearchTerm]);
+  const mapGuard = (row: any): Guard => ({
+    ...row,
+    school: Array.isArray(row.school) ? row.school[0] : row.school
+  });
 
-  const loadAllData = async () => {
-    try {
-      setLoading(true);
-      setError(null); // Clear previous errors
+  const loadGuardById = async (guardId: string) => {
+    const { data, error: guardError } = await supabase
+      .from('guards')
+      .select(`
+        id,
+        school_id,
+        guard_name,
+        civil_id,
+        status,
+        school:schools(id, school_name, region, governorate)
+      `)
+      .eq('id', guardId)
+      .single();
 
-      console.log('🔄 بدء تحميل جميع البيانات...');
-      
-      // جلب جميع الحراس بدون حد
-      let allGuardsData: Guard[] = [];
-      let page = 0;
-      const pageSize = 1000;
-      
-      while (true) {
-        const { data: pageData, error: guardsError } = await supabase
-          .from('guards')
-          .select(`
-            id,
-            school_id,
-            guard_name,
-            civil_id,
-            gender,
-            birth_date,
-            insurance,
-            start_date,
-            mobile,
-            iban,
-            file,
-            status,
-            notes,
-            created_at,
-            updated_at,
-            school:schools(*)
-          `)
-          .not('school_id', 'is', null)
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-          .order('guard_name');
-
-        if (guardsError) {
-          console.error('❌ خطأ في جلب الحراس:', guardsError);
-          throw guardsError;
-        }
-
-        if (!pageData || pageData.length === 0) break;
-        const formattedData = pageData.map((g: any) => ({
-  ...g,
-  school: Array.isArray(g.school) ? g.school[0] : g.school
-}));
-        
-        allGuardsData = [...allGuardsData, ...formattedData];
-        page++;
-        
-        if (pageData.length < pageSize) break;
-      }
-
-      // جلب جميع المدارس بدون حد
-      let allSchoolsData: SchoolType[] = []; // ✅ هنا التعديل
-page = 0;
-      
-      while (true) {
-        const { data: pageData, error: schoolsError } = await supabase
-          .from('schools')
-          .select('*')
-          .eq('status', 'نشط')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-          .order('school_name');
-
-        if (schoolsError) {
-          console.error('❌ خطأ في جلب المدارس:', schoolsError);
-          throw schoolsError;
-        }
-
-        if (!pageData || pageData.length === 0) break;
-        
-        allSchoolsData = [...allSchoolsData, ...pageData];
-        page++;
-        
-        if (pageData.length < pageSize) break;
-      }
-
-      console.log(`✅ تم تحميل ${allGuardsData.length} حارس و ${allSchoolsData.length} مدرسة`);
-      
-      setAllGuards(allGuardsData);
-      setAllSchools(allSchoolsData);
-    } catch (err: any) {
-      console.error('خطأ في تحميل البيانات:', err);
-      setError('خطأ في تحميل البيانات من قاعدة البيانات');
-      // في حالة الخطأ، استخدم البيانات الأولية
-      setAllGuards(initialGuards);
-      setAllSchools(initialSchools);
-    } finally {
-      setLoading(false);
+    if (!guardError && data) {
+      setSelectedGuard(mapGuard(data));
+      setGuardOptions(prev => prev.some(g => g.id === data.id) ? prev : [mapGuard(data), ...prev]);
     }
   };
 
-  const selectedGuard = filteredGuards.find(g => g.id === formData.guardId) || 
-                      allGuards.find(g => g.id === formData.guardId);
-  const selectedSchool = filteredSchools.find(s => s.id === formData.newSchoolId) || 
-                        allSchools.find(s => s.id === formData.newSchoolId);
+  const searchAssignedGuards = async (term: string) => {
+    try {
+      setSearchingGuards(true);
+      setError(null);
+
+      let query = supabase
+        .from('guards')
+        .select(`
+          id,
+          school_id,
+          guard_name,
+          civil_id,
+          status,
+          school:schools(id, school_name, region, governorate)
+        `)
+        .not('school_id', 'is', null)
+        .order('guard_name')
+        .limit(PAGE_LIMIT);
+
+      const cleanTerm = term.trim();
+      if (cleanTerm) {
+        query = query.or(`guard_name.ilike.%${cleanTerm}%,civil_id.ilike.%${cleanTerm}%`);
+      }
+
+      const { data, error: guardsError } = await query;
+      if (guardsError) throw guardsError;
+
+      const results = (data || []).map(mapGuard);
+      setGuardOptions(selectedGuard && !results.some(g => g.id === selectedGuard.id)
+        ? [selectedGuard, ...results]
+        : results
+      );
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'خطأ في البحث عن الحراس');
+    } finally {
+      setSearchingGuards(false);
+    }
+  };
+
+  const searchSchools = async (term: string) => {
+    try {
+      setSearchingSchools(true);
+      setError(null);
+
+      let query = supabase
+        .from('schools')
+        .select('id, school_name, region, governorate, principal_name, principal_mobile, status, notes, created_at, updated_at')
+        .eq('status', 'نشط')
+        .order('school_name')
+        .limit(PAGE_LIMIT);
+
+      const cleanTerm = term.trim();
+      if (cleanTerm) {
+        query = query.or(`school_name.ilike.%${cleanTerm}%,region.ilike.%${cleanTerm}%,governorate.ilike.%${cleanTerm}%`);
+      }
+
+      const { data, error: schoolsError } = await query;
+      if (schoolsError) throw schoolsError;
+
+      const results = data || [];
+      setSchoolOptions(selectedSchool && !results.some(s => s.id === selectedSchool.id)
+        ? [selectedSchool, ...results]
+        : results
+      );
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : 'خطأ في البحث عن المدارس');
+    } finally {
+      setSearchingSchools(false);
+    }
+  };
+
+  const handleGuardChange = (guardId: string) => {
+    const nextGuard = guardOptions.find(g => g.id === guardId) || null;
+    setSelectedGuard(nextGuard);
+    setFormData(prev => ({ ...prev, guardId }));
+    setError(null);
+  };
+
+  const handleSchoolChange = (schoolId: string) => {
+    const nextSchool = schoolOptions.find(s => s.id === schoolId) || null;
+    setSelectedSchool(nextSchool);
+    setFormData(prev => ({ ...prev, newSchoolId: schoolId }));
+    setError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.guardId || !formData.newSchoolId) {
       setError('يرجى اختيار الحارس والمدرسة الجديدة');
       return;
@@ -195,21 +190,20 @@ page = 0;
     try {
       setLoading(true);
       setError(null);
-      
-      const description = formData.description || 
-        `نقل الحارس ${selectedGuard?.guard_name} من ${selectedGuard?.school?.school_name || 'غير محدد'} إلى ${selectedSchool?.school_name}`;
-      
+
+      const description =
+        formData.description ||
+        `نقل الحارس ${selectedGuard?.guard_name || ''} من ${selectedGuard?.school?.school_name || 'غير محدد'} إلى ${selectedSchool?.school_name || ''}`;
+
       await onSubmit(formData.guardId, formData.newSchoolId, description);
-      
-      // عرض رسالة التأكيد
-      setConfirmationText(`تم نقل الحارس ${selectedGuard?.guard_name} بنجاح!`);
+
+      setConfirmationText(`تم نقل الحارس ${selectedGuard?.guard_name || ''} بنجاح!`);
       setConfirmationType('success');
       setShowConfirmation(true);
-      
-      // إغلاق النموذج بعد ثانيتين
+
       setTimeout(() => {
         onClose();
-      }, 2000);
+      }, 1500);
     } catch (err: any) {
       const errorMessage = err instanceof Error ? err.message : 'خطأ في نقل الحارس';
       setError(errorMessage);
@@ -221,15 +215,6 @@ page = 0;
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    setError(null);
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -238,10 +223,7 @@ page = 0;
             <ArrowRightLeft className="w-6 h-6 text-moe-600" />
             <h2 className="text-xl font-bold text-gray-800">نقل حارس</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -253,89 +235,66 @@ page = 0;
             </div>
           )}
 
-          {/* اختيار الحارس */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              اختر الحارس *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">اختر الحارس *</label>
             <div className="space-y-2">
               <input
                 type="text"
                 value={guardSearchTerm}
                 onChange={(e) => setGuardSearchTerm(e.target.value)}
-                placeholder="ابحث بالاسم، المدرسة، المنطقة، السجل المدني..."
+                placeholder="ابحث باسم الحارس أو السجل المدني..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               />
               <select
-                name="guardId"
                 value={formData.guardId}
-                onChange={handleChange}
+                onChange={(e) => handleGuardChange(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               >
-                <option value="">اختر الحارس ({filteredGuards.length} من {allGuards.length})</option>
-                {filteredGuards.map(guard => (
-                  <option key={guard.id} value={guard.id}>
-                    {guard.guard_name} - {guard.school?.school_name} - {guard.school?.region}
+                <option value="">
+                  {searchingGuards ? 'جاري البحث...' : `اختر الحارس (${guardOptions.length} نتيجة)`}
+                </option>
+                {guardOptions.map(guardOption => (
+                  <option key={guardOption.id} value={guardOption.id}>
+                    {guardOption.guard_name} - {guardOption.school?.school_name || '-'} - {guardOption.school?.region || '-'}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* معلومات الحارس الحالية */}
           {selectedGuard && (
             <div className="bg-moe-50 p-3 rounded-lg">
               <h3 className="text-sm font-medium text-moe-800 mb-2">المعلومات الحالية:</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-moe-700 font-medium">الاسم: </span>
-                  <span className="text-moe-800">{selectedGuard.guard_name}</span>
-                </div>
-                <div>
-                  <span className="text-moe-700 font-medium">المدرسة الحالية: </span>
-                  <span className="text-moe-800">
-                    {selectedGuard.school?.school_name || 'غير مرتبط بمدرسة'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-moe-700 font-medium">المنطقة: </span>
-                  <span className="text-moe-800">
-                    {selectedGuard.school?.region || '-'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-moe-700 font-medium">المحافظة: </span>
-                  <span className="text-moe-800">
-                    {selectedGuard.school?.governorate || '-'}
-                  </span>
-                </div>
+                <div><span className="text-moe-700 font-medium">الاسم: </span><span className="text-moe-800">{selectedGuard.guard_name}</span></div>
+                <div><span className="text-moe-700 font-medium">المدرسة الحالية: </span><span className="text-moe-800">{selectedGuard.school?.school_name || 'غير مرتبط بمدرسة'}</span></div>
+                <div><span className="text-moe-700 font-medium">المنطقة: </span><span className="text-moe-800">{selectedGuard.school?.region || '-'}</span></div>
+                <div><span className="text-moe-700 font-medium">المحافظة: </span><span className="text-moe-800">{selectedGuard.school?.governorate || '-'}</span></div>
               </div>
             </div>
           )}
 
-          {/* اختيار المدرسة الجديدة */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              المدرسة الجديدة *
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">المدرسة الجديدة *</label>
             <div className="space-y-2">
               <input
                 type="text"
                 value={schoolSearchTerm}
                 onChange={(e) => setSchoolSearchTerm(e.target.value)}
-                placeholder="ابحث بالاسم، المنطقة، المحافظة..."
+                placeholder="ابحث باسم المدرسة أو المنطقة أو المحافظة..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               />
               <select
-                name="newSchoolId"
                 value={formData.newSchoolId}
-                onChange={handleChange}
+                onChange={(e) => handleSchoolChange(e.target.value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               >
-                <option value="">اختر المدرسة الجديدة ({filteredSchools.filter(s => s.id !== selectedGuard?.school_id).length} من {allSchools.length})</option>
-                {filteredSchools
+                <option value="">
+                  {searchingSchools ? 'جاري البحث...' : `اختر المدرسة الجديدة (${schoolOptions.filter(s => s.id !== selectedGuard?.school_id).length} نتيجة)`}
+                </option>
+                {schoolOptions
                   .filter(school => school.id !== selectedGuard?.school_id)
                   .map(school => (
                     <option key={school.id} value={school.id}>
@@ -346,59 +305,31 @@ page = 0;
             </div>
           </div>
 
-          {/* معلومات المدرسة الجديدة */}
           {selectedSchool && (
             <div className="bg-green-50 p-3 rounded-lg">
               <h3 className="text-sm font-medium text-green-800 mb-2">معلومات المدرسة الجديدة:</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-green-700 font-medium">اسم المدرسة: </span>
-                  <span className="text-green-800">{selectedSchool.school_name}</span>
-                </div>
-                <div>
-                  <span className="text-green-700 font-medium">رقم الملف: </span>
-                  <span className="text-green-800">{selectedSchool.file_number}</span>
-                </div>
-                <div>
-                  <span className="text-green-700 font-medium">المنطقة: </span>
-                  <span className="text-green-800">{selectedSchool.region}</span>
-                </div>
-                <div>
-                  <span className="text-green-700 font-medium">المحافظة: </span>
-                  <span className="text-green-800">{selectedSchool.governorate}</span>
-                </div>
+                <div><span className="text-green-700 font-medium">اسم المدرسة: </span><span className="text-green-800">{selectedSchool.school_name}</span></div>
+                <div><span className="text-green-700 font-medium">المنطقة: </span><span className="text-green-800">{selectedSchool.region}</span></div>
+                <div><span className="text-green-700 font-medium">المحافظة: </span><span className="text-green-800">{selectedSchool.governorate}</span></div>
                 {selectedSchool.principal_name && (
-                  <div>
-                    <span className="text-green-700 font-medium">المدير/ة: </span>
-                    <span className="text-green-800">{selectedSchool.principal_name}</span>
-                  </div>
-                )}
-                {selectedSchool.principal_mobile && (
-                  <div>
-                    <span className="text-green-700 font-medium">جوال المدير: </span>
-                    <span className="text-green-800" dir="ltr">{selectedSchool.principal_mobile}</span>
-                  </div>
+                  <div><span className="text-green-700 font-medium">المدير/ة: </span><span className="text-green-800">{selectedSchool.principal_name}</span></div>
                 )}
               </div>
             </div>
           )}
 
-          {/* وصف العملية */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              وصف العملية (اختياري)
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">وصف العملية (اختياري)</label>
             <textarea
-              name="description"
               value={formData.description}
-              onChange={handleChange}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               rows={3}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent resize-none"
               placeholder="أدخل وصف مفصل لعملية النقل..."
             />
           </div>
 
-          {/* أزرار الإجراءات */}
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
@@ -408,18 +339,13 @@ page = 0;
               <Save className="w-4 h-4" />
               {loading ? 'جاري النقل...' : 'تأكيد النقل'}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
-            >
+            <button type="button" onClick={onClose} className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">
               إلغاء
             </button>
           </div>
         </form>
       </div>
-      
-      {/* رسالة التأكيد */}
+
       {showConfirmation && (
         <ConfirmationMessage
           message={confirmationText}

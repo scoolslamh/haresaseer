@@ -27,6 +27,27 @@ export interface School {
   guards_count?: number;
 }
 
+export type GuardStatus =
+  | 'على رأس العمل'
+  | 'إجازة أمومة/رعاية مولود'
+  | 'إجازة مرضية'
+  | 'إيقاف الراتب مؤقتاً'
+  | 'مجاز استثنائياً'
+  | 'مكفوف اليد'
+  | 'مكلف داخلي';
+
+export const GUARD_STATUS_OPTIONS: GuardStatus[] = [
+  'على رأس العمل',
+  'إجازة أمومة/رعاية مولود',
+  'إجازة مرضية',
+  'إيقاف الراتب مؤقتاً',
+  'مجاز استثنائياً',
+  'مكفوف اليد',
+  'مكلف داخلي',
+];
+
+export type AppointmentCategory = '' | 'المستخدمين' | 'بند الأجور';
+
 export interface Guard {
   id: string;
   school_id: string | null;
@@ -38,12 +59,14 @@ export interface Guard {
   start_date: string;
   mobile: string;
   iban: string;
-  file: string;
-  status: 'على رأس العمل' | 'منقطع' | 'مبعد عن المدارس' | 'إجازة';
+  job_title: string;
+  rank: string;
+  appointment_category: AppointmentCategory;
+  status: GuardStatus;
   notes: string;
   created_at: string;
   updated_at: string;
-  school?: School; // للربط مع المدرسة
+  school?: School;
 }
 
 export interface Violation {
@@ -88,8 +111,10 @@ export interface GuardForm {
   start_date: string;
   mobile: string;
   iban: string;
-  file: string;
-  status: 'على رأس العمل' | 'منقطع' | 'مبعد عن المدارس' | 'إجازة';
+  job_title: string;
+  rank: string;
+  appointment_category: AppointmentCategory;
+  status: GuardStatus;
   notes: string;
 }
 

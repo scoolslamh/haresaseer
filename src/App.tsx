@@ -1,16 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthService } from './services/authService';
 import { RealLoginForm } from './components/RealLoginForm';
 import { Layout } from './components/Layout';
-import { Dashboard } from './components/Dashboard';
 import { WelcomeMessage } from './components/WelcomeMessage';
 import { ProfileModal } from './components/ProfileModal';
-import { UserManagementPage } from './components/UserManagementPage';
 
-import { InquiryPage } from './components/InquiryPage';
-import { OperationsPage } from './components/OperationsPage';
-import ImportPage from './components/ImportPage';
-import { ViolationsPage } from './components/ViolationsPage';
+// تحميل الصفحات عند الطلب فقط بدلاً من تحميلها جميعاً عند البداية
+const Dashboard        = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
+const InquiryPage      = lazy(() => import('./components/InquiryPage').then(m => ({ default: m.InquiryPage })));
+const OperationsPage   = lazy(() => import('./components/OperationsPage').then(m => ({ default: m.OperationsPage })));
+const ViolationsPage   = lazy(() => import('./components/ViolationsPage').then(m => ({ default: m.ViolationsPage })));
+const ImportPage       = lazy(() => import('./components/ImportPage'));
+const UserManagementPage = lazy(() => import('./components/UserManagementPage').then(m => ({ default: m.UserManagementPage })));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-moe-600" />
+    </div>
+  );
+}
 
 const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 دقيقة
 
@@ -104,11 +113,7 @@ function App() {
       case 'import':
         return <ImportPage />;
       case 'users':
-        return (
-          <UserManagementPage
-            onPermissionsChange={handlePermissionsChange}
-          />
-        );
+        return <UserManagementPage onPermissionsChange={handlePermissionsChange} />;
       default:
         return <Dashboard />;
     }
@@ -135,10 +140,12 @@ function App() {
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         onProfileClick={handleProfileClick}
-        userPermissions={userPermissions}       // ✅ تمرير الصلاحيات كـ prop
+        userPermissions={userPermissions}
         onPermissionsChange={handlePermissionsChange}
       >
-        {renderPage()}
+        <Suspense fallback={<PageLoader />}>
+          {renderPage()}
+        </Suspense>
       </Layout>
 
       <WelcomeMessage />
