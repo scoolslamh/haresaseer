@@ -200,6 +200,7 @@ export const GuardForm: React.FC<GuardFormProps> = ({
                   <option value="">اختر فئة التعيين</option>
                   <option value="المستخدمين">المستخدمين</option>
                   <option value="بند الأجور">بند الأجور</option>
+                  <option value="الرسميين">الرسميين</option>
                 </select>
               </div>
 
@@ -229,16 +230,16 @@ export const GuardForm: React.FC<GuardFormProps> = ({
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">التأمينات</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">البدل</label>
                 <select
                   name="insurance"
                   value={formData.insurance}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
                 >
-                  <option value="">اختر حالة التأمين</option>
-                  <option value="نعم">نعم</option>
-                  <option value="لا">لا</option>
+                  <option value="">اختر حالة البدل</option>
+                  <option value="يصرف بدل">يصرف بدل</option>
+                  <option value="لا يصرف">لا يصرف</option>
                 </select>
               </div>
               

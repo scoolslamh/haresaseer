@@ -1,23 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Download, 
-  FileText, 
-  Users, 
+import {
+  Search,
+  Filter,
+  Download,
+  FileText,
+  Users,
   School,
   MapPin,
   Phone,
-  Calendar,
   User,
-  CreditCard,
   Shield,
   RefreshCw,
   Eye,
   Edit,
   Trash2,
-  Plus,
-  X
 } from 'lucide-react';
 import { GuardService } from '../services/guardService';
 import { SchoolService } from '../services/schoolService';
@@ -27,7 +23,6 @@ import { GuardForm } from './GuardForm';
 import { GuardDetailsModal } from './GuardDetailsModal';
 import { ExportService } from '../services/exportService';
 import { Pagination } from './Pagination';
-import { searchInArabicText } from '../utils/arabicUtils';
 import { ConfirmationMessage } from './ConfirmationMessage';
 import { OperationService } from '../services/operationService';
 
@@ -45,7 +40,6 @@ export const InquiryPage: React.FC = () => {
     active: 0
   });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showGuardForm, setShowGuardForm] = useState(false);
   const [showGuardDetails, setShowGuardDetails] = useState(false);
@@ -82,21 +76,22 @@ export const InquiryPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
+
       const [schoolsData, guardsResult, statsData] = await Promise.all([
         SchoolService.getAllSchools(),
         GuardService.getFilteredGuards(filters, currentPage, itemsPerPage),
         GuardService.getGuardsStats()
       ]);
-      
+
       setSchools(schoolsData);
       setFilteredGuards(guardsResult.guards);
       setTotalGuards(guardsResult.totalCount);
       setPaginatedGuards(guardsResult.guards);
       setOverallStats(statsData);
     } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
+      setConfirmationText(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
+      setConfirmationType('error');
+      setShowConfirmation(true);
     } finally {
       setLoading(false);
     }
@@ -559,9 +554,9 @@ export const InquiryPage: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        guard.insurance === 'نعم' 
-                          ? 'bg-green-100 text-green-800' 
-                          : guard.insurance === 'لا'
+                        guard.insurance === 'يصرف بدل'
+                          ? 'bg-green-100 text-green-800'
+                          : guard.insurance === 'لا يصرف'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>

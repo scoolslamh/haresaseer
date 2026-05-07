@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { ViolationForm, Guard } from '../types';
 import { X, AlertTriangle, Save, User, Calendar, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { GuardService } from '../services/guardService';
 import { SearchableSelect } from './SearchableSelect';
 import { ConfirmationMessage } from './ConfirmationMessage';
 import { OperationService } from '../services/operationService';
@@ -41,15 +40,12 @@ export const AddViolationModal: React.FC<AddViolationModalProps> = ({
   const loadAllGuards = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
 
-      console.log('🔄 بدء تحميل جميع الحراس بالطريقة التدريجية...');
-      
-      // جلب جميع الحراس بدون حد باستخدام التحميل التدريجي
-      let allGuardsData = [];
-      let page = 0;
       const pageSize = 1000;
-      
+      let page = 0;
+      const allGuardsData: Guard[] = [];
+
       while (true) {
         const { data: pageData, error: guardsError } = await supabase
           .from('guards')
@@ -64,38 +60,29 @@ export const AddViolationModal: React.FC<AddViolationModalProps> = ({
             start_date,
             mobile,
             iban,
-            file,
+            job_title,
+            rank,
+            appointment_category,
             status,
             notes,
             created_at,
             updated_at,
-            school:schools(*)
+            school:schools(id, school_name, region, governorate)
           `)
           .range(page * pageSize, (page + 1) * pageSize - 1)
           .order('guard_name');
 
-        if (guardsError) {
-          console.error('❌ خطأ في جلب الحراس:', guardsError);
-          throw guardsError;
-        }
-
+        if (guardsError) throw guardsError;
         if (!pageData || pageData.length === 0) break;
-        
-        allGuardsData = [...allGuardsData, ...pageData];
-        page++;
-        
-        console.log(`📄 تم تحميل الصفحة ${page}: ${pageData.length} حارس (الإجمالي: ${allGuardsData.length})`);
-        
+
+        allGuardsData.push(...(pageData as unknown as Guard[]));
         if (pageData.length < pageSize) break;
+        page++;
       }
-      
-      console.log(`✅ تم تحميل جميع الحراس: ${allGuardsData.length} حارس`);
-      
+
       setAllGuards(allGuardsData);
     } catch (err: any) {
-      console.error('خطأ في تحميل الحراس:', err);
       setError(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
-      // في حالة الخطأ، استخدم البيانات الأولية
       setAllGuards(initialGuards);
     } finally {
       setLoading(false);
@@ -231,13 +218,13 @@ export const AddViolationModal: React.FC<AddViolationModalProps> = ({
                   <div>
                     <span className="text-gray-600">الحالة: </span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedGuard.status === 'على رأس العمل' 
-                        ? 'bg-green-100 text-green-800' 
-                        : selectedGuard.status === 'منقطع'
+                      selectedGuard.status === 'على رأس العمل'
+                        ? 'bg-green-100 text-green-800'
+                        : selectedGuard.status === 'مكلف داخلي'
+                        ? 'bg-blue-100 text-blue-800'
+                        : selectedGuard.status === 'إيقاف الراتب مؤقتاً' || selectedGuard.status === 'مكفوف اليد'
                         ? 'bg-red-100 text-red-800'
-                        : selectedGuard.status === 'إجازة'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
+                        : 'bg-yellow-100 text-yellow-800'
                     }`}>
                       {selectedGuard.status}
                     </span>

@@ -44,7 +44,7 @@ export const GuardCard: React.FC<GuardCardProps> = ({ guard, onEdit, onDelete })
                 </span>
                 {guard.insurance && (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    guard.insurance === 'نعم' 
+                    guard.insurance === 'يصرف بدل'
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>

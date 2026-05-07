@@ -46,7 +46,9 @@ export const GUARD_STATUS_OPTIONS: GuardStatus[] = [
   'مكلف داخلي',
 ];
 
-export type AppointmentCategory = '' | 'المستخدمين' | 'بند الأجور';
+export type AppointmentCategory = '' | 'المستخدمين' | 'بند الأجور' | 'الرسميين';
+
+export type InsuranceStatus = '' | 'يصرف بدل' | 'لا يصرف';
 
 export interface Guard {
   id: string;
@@ -55,7 +57,7 @@ export interface Guard {
   civil_id: string;
   gender: '' | 'ذكر' | 'أنثى';
   birth_date: string;
-  insurance: '' | 'نعم' | 'لا';
+  insurance: InsuranceStatus;
   start_date: string;
   mobile: string;
   iban: string;
@@ -107,7 +109,7 @@ export interface GuardForm {
   civil_id: string;
   gender: '' | 'ذكر' | 'أنثى';
   birth_date: string;
-  insurance: '' | 'نعم' | 'لا';
+  insurance: InsuranceStatus;
   start_date: string;
   mobile: string;
   iban: string;

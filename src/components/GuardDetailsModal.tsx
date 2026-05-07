@@ -100,10 +100,10 @@ export const GuardDetailsModal: React.FC<GuardDetailsModalProps> = ({ guard, onC
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-500 mb-1">التأمينات</p>
+                <p className="text-xs font-medium text-gray-500 mb-1">البدل</p>
                 <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                  guard.insurance === 'نعم' ? 'bg-green-100 text-green-800' :
-                  guard.insurance === 'لا'  ? 'bg-red-100 text-red-800' :
+                  guard.insurance === 'يصرف بدل' ? 'bg-green-100 text-green-800' :
+                  guard.insurance === 'لا يصرف'  ? 'bg-red-100 text-red-800' :
                   'bg-gray-100 text-gray-600'
                 }`}>
                   {guard.insurance || '-'}

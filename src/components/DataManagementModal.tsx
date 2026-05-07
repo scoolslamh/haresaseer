@@ -676,7 +676,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                             <td className="px-4 py-3">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  guard.insurance === "نعم"
+                                  guard.insurance === "يصرف بدل"
                                     ? "bg-green-100 text-green-800"
                                     : guard.insurance === "لا"
                                       ? "bg-red-100 text-red-800"
