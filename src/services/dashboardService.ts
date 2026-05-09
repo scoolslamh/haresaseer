@@ -3,8 +3,8 @@ import { DashboardStats } from '../types';
 import { School } from '../types';
 import { normalizeArabicText } from '../utils/arabicUtils';
 
-// أعمدة المدارس المطلوبة فقط لحسابات لوحة القيادة
-const SCHOOL_STATS_COLUMNS = 'id, region, governorate, school_name';
+// أعمدة المدارس لحسابات لوحة القيادة (مع عدد الحراس)
+const SCHOOL_STATS_COLUMNS = 'id, region, governorate, school_name, guards:guards(count)';
 
 // أعمدة المدارس الكاملة لعرض قائمة المدارس
 const SCHOOL_FULL_COLUMNS = 'id, region, governorate, school_name, principal_name, principal_mobile, status, notes, created_at, updated_at';
@@ -29,44 +29,36 @@ async function fetchAllPages<T>(
   return results;
 }
 
+type SchoolWithGuardCount = {
+  id: string; region: string; governorate: string; school_name: string;
+  guards: { count: number }[];
+};
+
 export class DashboardService {
-  private static async getAllLinkedGuardSchoolIds(): Promise<Set<string>> {
-    // استعلام واحد بدلاً من حلقة متعددة الصفحات
-    const { data, error } = await supabase
-      .from('guards')
-      .select('school_id')
-      .not('school_id', 'is', null)
-      .limit(50000);
-
-    if (error) throw error;
-    return new Set((data || []).map((g: any) => g.school_id).filter(Boolean));
-  }
-
   static async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // جلب المدارس النشطة + إحصائيات الحراس + معرفات المدارس المرتبطة بالتوازي
+      // جلب المدارس النشطة (مع عدد الحراس) + إحصائيات الحراس بالتوازي
       const [
         allSchoolsData,
-        linkedGuardSchoolIds,
         { data: dashboardStats, error: statsError },
         { count: activeGuardsCount },
       ] = await Promise.all([
-        fetchAllPages<{ id: string; region: string; governorate: string; school_name: string }>(
+        fetchAllPages<SchoolWithGuardCount>(
           ([start, end]) =>
-            supabase
+            (supabase
               .from('schools')
               .select(SCHOOL_STATS_COLUMNS)
               .eq('status', 'نشط')
               .order('school_name')
-              .range(start, end)
+              .range(start, end) as any)
         ),
-        this.getAllLinkedGuardSchoolIds(),
         supabase.rpc('get_dashboard_statistics'),
         supabase.from('guards').select('id', { count: 'exact', head: true }).eq('status', 'على رأس العمل'),
       ]);
 
       const actualTotalSchools = allSchoolsData.length;
-      const actualSchoolsWithGuards = allSchoolsData.filter(s => linkedGuardSchoolIds.has(s.id)).length;
+      // عدد الحراس مدمج مباشرة في بيانات المدرسة — لا حاجة لاستعلام منفصل
+      const actualSchoolsWithGuards = allSchoolsData.filter(s => (s.guards?.[0]?.count || 0) > 0).length;
       const actualSchoolsWithoutGuards = actualTotalSchools - actualSchoolsWithGuards;
 
       let totalGuards = 0, maleGuards = 0, femaleGuards = 0;
@@ -188,19 +180,17 @@ export class DashboardService {
 
   static async getSchoolsWithoutGuards(): Promise<School[]> {
     try {
-      const [allSchoolsData, linkedIds] = await Promise.all([
-        fetchAllPages<School>(([start, end]) =>
-          supabase
+      const allSchoolsData = await fetchAllPages<School & { guards: { count: number }[] }>(
+        ([start, end]) =>
+          (supabase
             .from('schools')
-            .select(SCHOOL_FULL_COLUMNS)
+            .select(`${SCHOOL_FULL_COLUMNS}, guards:guards(count)`)
             .eq('status', 'نشط')
             .order('school_name')
-            .range(start, end)
-        ),
-        this.getAllLinkedGuardSchoolIds()
-      ]);
+            .range(start, end) as any)
+      );
 
-      return allSchoolsData.filter(school => !linkedIds.has(school.id));
+      return allSchoolsData.filter((school: any) => (school.guards?.[0]?.count || 0) === 0);
     } catch (error) {
       throw new Error(`خطأ في جلب المدارس بدون حراس: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     }
