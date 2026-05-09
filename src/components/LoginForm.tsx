@@ -58,7 +58,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
               className="h-20 w-auto object-contain"
             />
           </div>
-          <h1 className="text-2xl font-bold text-moe-900 mb-2">نظام بوّاب</h1>
+          <h1 className="text-2xl font-bold text-moe-900 mb-2">نظام الحراسات</h1>
           <p className="text-gray-600">نظام إدارة الحراس في المدارس</p>
         </div>
 

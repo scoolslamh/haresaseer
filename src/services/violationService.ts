@@ -1,22 +1,126 @@
 import { supabase } from '../lib/supabase';
 import { Violation, ViolationForm } from '../types';
 import { AuthService } from './authService';
+import { normalizeArabicText, escapeLikePattern } from '../utils/arabicUtils';
+
+const VIOLATION_SELECT = `
+  *,
+  guard:guards(id, guard_name, status, civil_id, school:schools(school_name))
+`;
 
 export class ViolationService {
   static async getAllViolations(): Promise<Violation[]> {
     const { data, error } = await supabase
       .from('violations')
-      .select(`
-        *,
-        guard:guards(*)
-      `)
+      .select(`*, guard:guards(*)`)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      throw new Error(`خطأ في جلب بيانات المخالفات: ${error.message}`);
+    if (error) throw new Error(`خطأ في جلب بيانات المخالفات: ${error.message}`);
+    return data || [];
+  }
+
+  static async getFilteredViolations(
+    filters: { search?: string; violationType?: string; guardId?: string; dateFrom?: string; dateTo?: string },
+    page: number = 1,
+    itemsPerPage: number = 20
+  ): Promise<{ violations: Violation[]; totalCount: number }> {
+    const startIndex = (page - 1) * itemsPerPage;
+
+    let query = supabase
+      .from('violations')
+      .select(VIOLATION_SELECT, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(startIndex, startIndex + itemsPerPage - 1);
+
+    if (filters.violationType && filters.violationType !== 'all') {
+      query = query.eq('violation_type', filters.violationType);
+    }
+    if (filters.guardId && filters.guardId !== 'all') {
+      query = query.eq('guard_id', filters.guardId);
+    }
+    if (filters.dateFrom) query = query.gte('violation_date', filters.dateFrom);
+    if (filters.dateTo) query = query.lte('violation_date', filters.dateTo);
+
+    if (filters.search?.trim()) {
+      const normalized = escapeLikePattern(normalizeArabicText(filters.search.trim()));
+      const { data: matchingGuards } = await supabase
+        .from('guards').select('id').ilike('guard_name', `%${normalized}%`);
+      const guardIds = matchingGuards?.map(g => g.id) || [];
+      const orFilter = guardIds.length > 0
+        ? `description.ilike.%${normalized}%,guard_id.in.(${guardIds.join(',')})`
+        : `description.ilike.%${normalized}%`;
+      query = (query as any).or(orFilter);
     }
 
-    return data || [];
+    const { data, error, count } = await (query as any);
+    if (error) throw new Error(`خطأ في جلب المخالفات: ${error.message}`);
+    return { violations: data || [], totalCount: count || 0 };
+  }
+
+  static async getViolationPageStats(): Promise<{
+    total: number; complaints: number; warnings: number; violations: number; thisMonth: number;
+  }> {
+    const thisMonthStart = new Date();
+    thisMonthStart.setDate(1);
+    thisMonthStart.setHours(0, 0, 0, 0);
+
+    const [{ count: total }, { count: complaints }, { count: warnings }, { count: violations }, { count: thisMonth }] =
+      await Promise.all([
+        supabase.from('violations').select('id', { count: 'exact', head: true }),
+        supabase.from('violations').select('id', { count: 'exact', head: true }).eq('violation_type', 'شكوى'),
+        supabase.from('violations').select('id', { count: 'exact', head: true }).eq('violation_type', 'إنذار'),
+        supabase.from('violations').select('id', { count: 'exact', head: true }).eq('violation_type', 'مخالفة'),
+        supabase.from('violations').select('id', { count: 'exact', head: true }).gte('created_at', thisMonthStart.toISOString()),
+      ]);
+
+    return {
+      total: total || 0, complaints: complaints || 0, warnings: warnings || 0,
+      violations: violations || 0, thisMonth: thisMonth || 0,
+    };
+  }
+
+  static async getViolationsForExport(
+    filters: { search?: string; violationType?: string; guardId?: string; dateFrom?: string; dateTo?: string }
+  ): Promise<Violation[]> {
+    const pageSize = 1000;
+    let page = 0;
+    let allViolations: Violation[] = [];
+
+    let normalized = '';
+    let guardIds: string[] = [];
+    if (filters.search?.trim()) {
+      normalized = escapeLikePattern(normalizeArabicText(filters.search.trim()));
+      const { data: mg } = await supabase.from('guards').select('id').ilike('guard_name', `%${normalized}%`);
+      guardIds = mg?.map(g => g.id) || [];
+    }
+
+    while (true) {
+      let query = supabase
+        .from('violations')
+        .select(VIOLATION_SELECT)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (filters.violationType && filters.violationType !== 'all') query = query.eq('violation_type', filters.violationType);
+      if (filters.guardId && filters.guardId !== 'all') query = query.eq('guard_id', filters.guardId);
+      if (filters.dateFrom) query = query.gte('violation_date', filters.dateFrom);
+      if (filters.dateTo) query = query.lte('violation_date', filters.dateTo);
+      if (normalized) {
+        const orFilter = guardIds.length > 0
+          ? `description.ilike.%${normalized}%,guard_id.in.(${guardIds.join(',')})`
+          : `description.ilike.%${normalized}%`;
+        query = (query as any).or(orFilter);
+      }
+
+      const { data, error } = await (query as any);
+      if (error) throw new Error(`خطأ في تصدير المخالفات: ${error.message}`);
+      const batch = data || [];
+      allViolations = [...allViolations, ...batch];
+      if (batch.length < pageSize) break;
+      page++;
+    }
+
+    return allViolations;
   }
 
   static async getViolationsByGuard(guardId: string): Promise<Violation[]> {

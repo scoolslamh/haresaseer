@@ -31,47 +31,41 @@ async function fetchAllPages<T>(
 
 export class DashboardService {
   private static async getAllLinkedGuardSchoolIds(): Promise<Set<string>> {
-    const guards = await fetchAllPages<{ school_id: string }>(([start, end]) =>
-      supabase
-        .from('guards')
-        .select('school_id')
-        .not('school_id', 'is', null)
-        .range(start, end)
-    );
+    // استعلام واحد بدلاً من حلقة متعددة الصفحات
+    const { data, error } = await supabase
+      .from('guards')
+      .select('school_id')
+      .not('school_id', 'is', null)
+      .limit(50000);
 
-    const ids = new Set<string>();
-    for (const g of guards) {
-      if (g.school_id) ids.add(g.school_id);
-    }
-    return ids;
+    if (error) throw error;
+    return new Set((data || []).map((g: any) => g.school_id).filter(Boolean));
   }
 
   static async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // جلب المدارس النشطة (الأعمدة المطلوبة فقط)
-      const allSchoolsData = await fetchAllPages<{ id: string; region: string; governorate: string; school_name: string }>(
-        ([start, end]) =>
-          supabase
-            .from('schools')
-            .select(SCHOOL_STATS_COLUMNS)
-            .eq('status', 'نشط')
-            .order('school_name')
-            .range(start, end)
-      );
-
-      const actualTotalSchools = allSchoolsData.length;
-
-      // جلب معرفات المدارس التي لها حراس + إحصائيات الحراس بالتوازي
+      // جلب المدارس النشطة + إحصائيات الحراس + معرفات المدارس المرتبطة بالتوازي
       const [
+        allSchoolsData,
         linkedGuardSchoolIds,
         { data: dashboardStats, error: statsError },
-        { count: activeGuardsCount }
+        { count: activeGuardsCount },
       ] = await Promise.all([
+        fetchAllPages<{ id: string; region: string; governorate: string; school_name: string }>(
+          ([start, end]) =>
+            supabase
+              .from('schools')
+              .select(SCHOOL_STATS_COLUMNS)
+              .eq('status', 'نشط')
+              .order('school_name')
+              .range(start, end)
+        ),
         this.getAllLinkedGuardSchoolIds(),
         supabase.rpc('get_dashboard_statistics'),
-        supabase.from('guards').select('id', { count: 'exact', head: true }).eq('status', 'على رأس العمل')
+        supabase.from('guards').select('id', { count: 'exact', head: true }).eq('status', 'على رأس العمل'),
       ]);
 
+      const actualTotalSchools = allSchoolsData.length;
       const actualSchoolsWithGuards = allSchoolsData.filter(s => linkedGuardSchoolIds.has(s.id)).length;
       const actualSchoolsWithoutGuards = actualTotalSchools - actualSchoolsWithGuards;
 
@@ -79,22 +73,25 @@ export class DashboardService {
       let insuredGuards = 0, uninsuredGuards = 0;
 
       if (statsError || !dashboardStats?.length) {
-        // fallback: استعلامات منفصلة بالتوازي
+        // fallback: count queries متوازية بدلاً من جلب كل البيانات
         const [
           { count: tg },
-          { data: genderData },
-          { data: insuranceData }
+          { count: mg },
+          { count: fg },
+          { count: ig },
+          { count: ug },
         ] = await Promise.all([
           supabase.from('guards').select('id', { count: 'exact', head: true }),
-          supabase.from('guards').select('gender'),
-          supabase.from('guards').select('insurance')
+          supabase.from('guards').select('id', { count: 'exact', head: true }).eq('gender', 'ذكر'),
+          supabase.from('guards').select('id', { count: 'exact', head: true }).eq('gender', 'أنثى'),
+          supabase.from('guards').select('id', { count: 'exact', head: true }).eq('insurance', 'نعم'),
+          supabase.from('guards').select('id', { count: 'exact', head: true }).eq('insurance', 'لا'),
         ]);
-
-        totalGuards    = tg || 0;
-        maleGuards     = genderData?.filter(g => g.gender    === 'ذكر').length  || 0;
-        femaleGuards   = genderData?.filter(g => g.gender    === 'أنثى').length || 0;
-        insuredGuards  = insuranceData?.filter(g => g.insurance === 'نعم').length || 0;
-        uninsuredGuards = insuranceData?.filter(g => g.insurance === 'لا').length || 0;
+        totalGuards     = tg || 0;
+        maleGuards      = mg || 0;
+        femaleGuards    = fg || 0;
+        insuredGuards   = ig || 0;
+        uninsuredGuards = ug || 0;
       } else {
         const s = dashboardStats[0];
         totalGuards     = Number(s.total_guards);

@@ -114,27 +114,12 @@ export const OperationsPage: React.FC = () => {
 
   const loadGuardOptions = async () => {
     try {
-      const pageSize = 1000;
-      let page = 0;
-      let allGuards: Guard[] = [];
-
-      while (true) {
-        const { data, error } = await supabase
-          .from('guards')
-          .select('id, school_id, guard_name, civil_id')
-          .order('guard_name')
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (error) throw error;
-
-        const guardsPage = (data || []) as Guard[];
-        allGuards = [...allGuards, ...guardsPage];
-
-        if (guardsPage.length < pageSize) break;
-        page++;
-      }
-
-      setGuards(allGuards);
+      const { data, error } = await supabase
+        .from('guards')
+        .select('id, school_id, guard_name, civil_id')
+        .order('guard_name');
+      if (error) throw error;
+      setGuards((data || []) as Guard[]);
     } catch (err) {
       console.error('خطأ في تحميل قائمة الحراس:', err);
     }

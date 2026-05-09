@@ -1,21 +1,14 @@
 import { supabase } from '../lib/supabase';
 import { School, SchoolForm } from '../types';
-import { normalizeArabicText, escapeLikePattern, searchInArabicText } from '../utils/arabicUtils';
+import { normalizeArabicText, escapeLikePattern } from '../utils/arabicUtils';
 
 export class SchoolService {
-  private static async searchFilteredSchools(
-    filters: { search?: string; region?: string; status?: string },
-    page: number,
-    itemsPerPage: number
+  static async getFilteredSchools(
+    filters: { search?: string; region?: string; status?: string } = {},
+    page: number = 1,
+    itemsPerPage: number = 20
   ): Promise<{ schools: School[]; totalCount: number }> {
-    const pageSize = 1000;
-    let currentPage = 0;
-    let allSchools: any[] = [];
-
-    while (true) {
-      const from = currentPage * pageSize;
-      const to = from + pageSize - 1;
-
+    try {
       let query = supabase
         .from('schools')
         .select(`
@@ -26,76 +19,9 @@ export class SchoolService {
           principal_name,
           status,
           guards:guards(count)
-        `)
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        `, { count: 'exact' });
 
-      if (filters.region && filters.region !== 'all') {
-        query = query.eq('region', filters.region);
-      }
-
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      const { data, error } = await (query as any);
-
-      if (error) {
-        throw new Error(`خطأ في جلب المدارس المفلترة: ${error.message}`);
-      }
-
-      const schoolsPage = (data || []).map((school: any) => ({
-        ...school,
-        guards_count: school.guards?.[0]?.count || 0,
-      }));
-
-      allSchools = [...allSchools, ...schoolsPage];
-
-      if (schoolsPage.length < pageSize) {
-        break;
-      }
-
-      currentPage++;
-    }
-
-    const searchTerm = filters.search!.trim();
-    const filtered = allSchools.filter((school) =>
-      searchInArabicText(school.school_name || '', searchTerm) ||
-      searchInArabicText(school.principal_name || '', searchTerm) ||
-      searchInArabicText(school.governorate || '', searchTerm)
-    );
-
-    const startIndex = (page - 1) * itemsPerPage;
-
-    return {
-      schools: filtered.slice(startIndex, startIndex + itemsPerPage),
-      totalCount: filtered.length
-    };
-  }
-
-  static async getFilteredSchools(
-    filters: { search?: string; region?: string; status?: string } = {},
-    page: number = 1,
-    itemsPerPage: number = 20
-  ): Promise<{ schools: School[]; totalCount: number }> {
-    try {
-      if (filters.search?.trim()) {
-        return this.searchFilteredSchools(filters, page, itemsPerPage);
-      }
-
-      let query = supabase
-  .from('schools')
-  .select(`
-    id,
-    school_name,
-    region,
-    governorate,
-    principal_name,
-    status,
-    guards:guards(count)
-  `, { count: 'exact' });
-
-      // البحث
+      // البحث على السيرفر مباشرة
       if (filters.search && filters.search.trim()) {
         const searchTerm = escapeLikePattern(normalizeArabicText(filters.search.trim()));
         query = query.or(

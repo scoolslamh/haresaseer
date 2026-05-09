@@ -93,7 +93,7 @@ export class ExportService {
         
         // اسم الشركة على اليمين
         doc.setFontSize(14);
-        doc.text('نظام بوّاب', doc.internal.pageSize.width - 20, 15, { align: 'right' });
+        doc.text('نظام الحراسات', doc.internal.pageSize.width - 20, 15, { align: 'right' });
         
         // خط فاصل
         doc.setLineWidth(0.5);
@@ -268,7 +268,7 @@ export class ExportService {
         
         // اسم الشركة على اليمين
         doc.setFontSize(14);
-        doc.text('نظام بوّاب', doc.internal.pageSize.width - 20, 15, { align: 'right' });
+        doc.text('نظام الحراسات', doc.internal.pageSize.width - 20, 15, { align: 'right' });
         
         // خط فاصل
         doc.setLineWidth(0.5);
@@ -440,7 +440,7 @@ export class ExportService {
         
         // اسم الشركة على اليمين
         doc.setFontSize(14);
-        doc.text('نظام بوّاب', doc.internal.pageSize.width - 20, 15, { align: 'right' });
+        doc.text('نظام الحراسات', doc.internal.pageSize.width - 20, 15, { align: 'right' });
         
         // خط فاصل
         doc.setLineWidth(0.5);
@@ -613,7 +613,7 @@ export class ExportService {
         
         // اسم الشركة على اليمين
         doc.setFontSize(14);
-        doc.text('نظام بوّاب', doc.internal.pageSize.width - 20, 15, { align: 'right' });
+        doc.text('نظام الحراسات', doc.internal.pageSize.width - 20, 15, { align: 'right' });
         
         // خط فاصل
         doc.setLineWidth(0.5);

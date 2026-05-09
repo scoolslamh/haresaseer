@@ -205,7 +205,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </button>
             <div className="flex items-center gap-2">
               <Shield className="w-6 h-6 text-moe-800" />
-              <h1 className="text-lg font-bold text-moe-900">نظام بوّاب</h1>
+              <h1 className="text-lg font-bold text-moe-900">نظام الحراسات</h1>
             </div>
           </div>
         </div>

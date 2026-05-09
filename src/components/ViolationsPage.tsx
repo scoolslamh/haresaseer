@@ -15,19 +15,17 @@ import {
   X
 } from 'lucide-react';
 import { ViolationService } from '../services/violationService';
-import { GuardService } from '../services/guardService';
 import { Violation, Guard } from '../types';
 import { AuthService } from '../services/authService';
 import { AddViolationModal } from './AddViolationModal';
 import { ExportService } from '../services/exportService';
 import { Pagination } from './Pagination';
-import { searchInArabicText } from '../utils/arabicUtils';
+import { supabase } from '../lib/supabase';
 
 export const ViolationsPage: React.FC = () => {
   const [violations, setViolations] = useState<Violation[]>([]);
   const [guards, setGuards] = useState<Guard[]>([]);
-  const [filteredViolations, setFilteredViolations] = useState<Violation[]>([]);
-  const [paginatedViolations, setPaginatedViolations] = useState<Violation[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,30 +54,39 @@ export const ViolationsPage: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
+    loadStats();
+    loadGuards();
   }, []);
 
   useEffect(() => {
-    applyFilters();
-  }, [violations, filters]);
+    loadViolations();
+  }, [filters, currentPage, itemsPerPage]);
 
-  useEffect(() => {
-    applyPagination();
-  }, [filteredViolations, currentPage, itemsPerPage]);
+  const loadStats = async () => {
+    try {
+      const s = await ViolationService.getViolationPageStats();
+      setStats(s);
+    } catch { /* non-blocking */ }
+  };
 
-  const loadData = async () => {
+  const loadGuards = async () => {
+    try {
+      const { data } = await supabase
+        .from('guards')
+        .select('id, guard_name, civil_id, school_id')
+        .order('guard_name');
+      setGuards((data || []) as Guard[]);
+    } catch { /* non-blocking */ }
+  };
+
+  const loadViolations = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const [violationsData, guardsData] = await Promise.all([
-        ViolationService.getAllViolations(),
-        GuardService.getAllGuards()
-      ]);
-      
-      setViolations(violationsData);
-      setGuards(guardsData);
-      calculateStats(violationsData);
+      const { violations: data, totalCount: total } =
+        await ViolationService.getFilteredViolations(filters, currentPage, itemsPerPage);
+      setViolations(data);
+      setTotalCount(total);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
     } finally {
@@ -87,92 +94,25 @@ export const ViolationsPage: React.FC = () => {
     }
   };
 
-  const calculateStats = (violationsData: Violation[]) => {
-    const thisMonth = new Date();
-    thisMonth.setDate(1);
-    thisMonth.setHours(0, 0, 0, 0);
-
-    const newStats = {
-      total: violationsData.length,
-      complaints: violationsData.filter(v => v.violation_type === 'شكوى').length,
-      warnings: violationsData.filter(v => v.violation_type === 'إنذار').length,
-      violations: violationsData.filter(v => v.violation_type === 'مخالفة').length,
-      thisMonth: violationsData.filter(v => 
-        new Date(v.created_at) >= thisMonth
-      ).length
-    };
-    setStats(newStats);
-  };
-
-  const applyFilters = () => {
-    let filtered = [...violations];
-
-    // البحث النصي
-    if (filters.search) {
-      filtered = filtered.filter(violation => 
-        searchInArabicText(violation.description, filters.search) ||
-        searchInArabicText(violation.guard?.guard_name || '', filters.search)
-      );
-    }
-
-    // تصفية حسب نوع المخالفة
-    if (filters.violationType && filters.violationType !== 'all') {
-      filtered = filtered.filter(v => v.violation_type === filters.violationType);
-    }
-
-    // تصفية حسب الحارس
-    if (filters.guardId && filters.guardId !== 'all') {
-      filtered = filtered.filter(v => v.guard_id === filters.guardId);
-    }
-
-    // تصفية حسب التاريخ
-    if (filters.dateFrom) {
-      filtered = filtered.filter(v => 
-        new Date(v.violation_date) >= new Date(filters.dateFrom)
-      );
-    }
-
-    if (filters.dateTo) {
-      filtered = filtered.filter(v => 
-        new Date(v.violation_date) <= new Date(filters.dateTo + 'T23:59:59')
-      );
-    }
-
-    setFilteredViolations(filtered);
+  const loadData = async () => {
     setCurrentPage(1);
-  };
-
-  const applyPagination = () => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setPaginatedViolations(filteredViolations.slice(startIndex, endIndex));
+    await Promise.all([loadStats(), loadViolations()]);
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setCurrentPage(1);
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      violationType: 'all',
-      guardId: 'all',
-      dateFrom: '',
-      dateTo: ''
-    });
+    setCurrentPage(1);
+    setFilters({ search: '', violationType: 'all', guardId: 'all', dateFrom: '', dateTo: '' });
   };
 
   const handleAddViolation = async (violationData: any) => {
-    try {
-      await ViolationService.createViolation(violationData);
-      setShowAddModal(false);
-      await loadData();
-    } catch (err: any) {
-      throw err;
-    }
+    await ViolationService.createViolation(violationData);
+    setShowAddModal(false);
+    await loadData();
   };
 
   const handleEditViolation = (violation: Violation) => {
@@ -199,11 +139,11 @@ export const ViolationsPage: React.FC = () => {
   const handleExport = async (format: 'excel' | 'pdf') => {
     try {
       setExporting(true);
-      
+      const allFiltered = await ViolationService.getViolationsForExport(filters);
       if (format === 'excel') {
-        await ExportService.exportViolationsToExcel(filteredViolations, 'سجل_المخالفات');
+        await ExportService.exportViolationsToExcel(allFiltered, 'سجل_المخالفات');
       } else {
-        await ExportService.exportViolationsToPDF(filteredViolations, 'سجل المخالفات');
+        await ExportService.exportViolationsToPDF(allFiltered, 'سجل المخالفات');
       }
     } catch (err: any) {
       alert(err instanceof Error ? err.message : 'خطأ في التصدير');
@@ -448,7 +388,7 @@ export const ViolationsPage: React.FC = () => {
       )}
 
       {/* Export Buttons */}
-      {filteredViolations.length > 0 && (
+      {totalCount > 0 && (
         <div className="flex justify-end gap-3">
           <button
             onClick={() => handleExport('excel')}
@@ -486,14 +426,14 @@ export const ViolationsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {paginatedViolations.length === 0 ? (
+              {violations.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     {loading ? 'جاري التحميل...' : 'لا توجد مخالفات'}
                   </td>
                 </tr>
               ) : (
-                paginatedViolations.map((violation) => (
+                violations.map((violation) => (
                   <tr key={violation.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -572,7 +512,7 @@ export const ViolationsPage: React.FC = () => {
       {/* Pagination */}
       <Pagination
         currentPage={currentPage}
-        totalItems={filteredViolations.length}
+        totalItems={totalCount}
         itemsPerPage={itemsPerPage}
         onPageChange={setCurrentPage}
         onItemsPerPageChange={(newItemsPerPage) => {
@@ -583,7 +523,7 @@ export const ViolationsPage: React.FC = () => {
 
       {/* Results Summary */}
       <div className="text-center text-gray-600">
-        عرض {filteredViolations.length} من أصل {violations.length} مخالفة
+        إجمالي النتائج: {totalCount} مخالفة
       </div>
 
       {/* Add Violation Modal */}

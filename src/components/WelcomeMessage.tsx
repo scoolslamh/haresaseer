@@ -50,7 +50,7 @@ export const WelcomeMessage: React.FC = () => {
             </h3>
 
             <p className="text-xs text-gray-600">
-              مرحباً بك في نظام بوّاب
+              مرحباً بك في نظام الحراسات
             </p>
 
             <p className="text-xs text-moe-600">
