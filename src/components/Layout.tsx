@@ -9,6 +9,7 @@ import {
   FileText,
   Upload,
   UserCheck,
+  FileSpreadsheet,
 } from "lucide-react";
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { AuthService } from "../services/authService";
@@ -115,6 +116,14 @@ export const Layout: React.FC<LayoutProps> = ({
       color: "text-moe-500",
       bg: "bg-moe-50",
       visible: hasAnyPermission("import.data"),
+    },
+    {
+      id: "export",
+      label: "تصدير البيانات",
+      icon: FileSpreadsheet,
+      color: "text-green-700",
+      bg: "bg-green-50",
+      visible: hasAnyPermission("guards.export", "reports.export"),
     },
     {
       id: "users",

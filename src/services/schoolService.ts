@@ -71,6 +71,19 @@ export class SchoolService {
     }
   }
 
+  static async getSchoolsForExport(filters: { region?: string; status?: string } = {}): Promise<School[]> {
+    const pageSize = 1000;
+    let page = 1;
+    let all: School[] = [];
+    while (true) {
+      const { schools } = await this.getFilteredSchools(filters, page, pageSize);
+      all = [...all, ...schools];
+      if (schools.length < pageSize) break;
+      page++;
+    }
+    return all;
+  }
+
   static async getAllSchools(): Promise<School[]> {
     const pageSize = 1000;
     let page = 0;

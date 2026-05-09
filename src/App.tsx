@@ -12,6 +12,7 @@ const OperationsPage   = lazy(() => import('./components/OperationsPage').then(m
 const ViolationsPage   = lazy(() => import('./components/ViolationsPage').then(m => ({ default: m.ViolationsPage })));
 const ImportPage       = lazy(() => import('./components/ImportPage'));
 const UserManagementPage = lazy(() => import('./components/UserManagementPage').then(m => ({ default: m.UserManagementPage })));
+const ExportDataPage     = lazy(() => import('./components/ExportDataPage').then(m => ({ default: m.ExportDataPage })));
 
 function PageLoader() {
   return (
@@ -114,6 +115,8 @@ function App() {
         return <ImportPage />;
       case 'users':
         return <UserManagementPage onPermissionsChange={handlePermissionsChange} />;
+      case 'export':
+        return <ExportDataPage />;
       default:
         return <Dashboard />;
     }

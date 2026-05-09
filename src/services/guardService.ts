@@ -196,6 +196,19 @@ export class GuardService {
     }
   }
 
+  static async getGuardsForExport(filters: GuardFilters = {}): Promise<Guard[]> {
+    const pageSize = 1000;
+    let page = 1;
+    let all: Guard[] = [];
+    while (true) {
+      const { guards } = await this.getFilteredGuards(filters, page, pageSize);
+      all = [...all, ...guards];
+      if (guards.length < pageSize) break;
+      page++;
+    }
+    return all;
+  }
+
   static async getAllGuards(): Promise<Guard[]> {
     const { data, error } = await supabase
       .from('guards')
