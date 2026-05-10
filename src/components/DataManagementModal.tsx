@@ -456,9 +456,6 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                     >
                       <option value="all">جميع المناطق</option>
                       <option value="عسير">عسير</option>
-                      <option value="جيزان">جيزان</option>
-                      <option value="الباحة">الباحة</option>
-                      <option value="نجران">نجران</option>
                     </select>
                   </div>
 
@@ -805,9 +802,6 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                     >
                       <option value="all">جميع المناطق</option>
                       <option value="عسير">عسير</option>
-                      <option value="جيزان">جيزان</option>
-                      <option value="الباحة">الباحة</option>
-                      <option value="نجران">نجران</option>
                     </select>
                   </div>
 

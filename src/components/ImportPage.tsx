@@ -20,7 +20,7 @@ const GUARD_STATUSES = [
 ];
 const APPOINTMENT_CATEGORIES = ['المستخدمين', 'بند الأجور'];
 const INSURANCE_OPTIONS = ['يصرف بدل', 'لا يصرف'];
-const REGIONS = ['عسير', 'جيزان', 'الباحة', 'نجران'];
+const REGIONS = ['عسير'];
 
 interface ImportData {
   guards: any[];

@@ -23,7 +23,7 @@ interface SchoolsWithoutGuardsModalProps {
 type SortField = 'school_name' | 'region' | 'governorate' | 'principal_name';
 type SortDir   = 'asc' | 'desc';
 
-const REGIONS = ['عسير', 'جيزان', 'الباحة', 'نجران'] as const;
+const REGIONS = ['عسير'] as const;
 
 export const SchoolsWithoutGuardsModal: React.FC<SchoolsWithoutGuardsModalProps> = ({
   onClose,

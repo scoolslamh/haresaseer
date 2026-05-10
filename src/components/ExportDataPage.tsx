@@ -5,6 +5,7 @@ import { GuardService } from '../services/guardService';
 import { SchoolService } from '../services/schoolService';
 import { Guard, School as SchoolType, GuardFilters, GUARD_STATUS_OPTIONS } from '../types';
 import { AuthService } from '../services/authService';
+import { ACTIVE_REGIONS } from '../constants/regions';
 
 // ─── تعريف حقول الحراس ───────────────────────────────────────────────────────
 const GUARD_FIELDS = [
@@ -43,7 +44,7 @@ const SCHOOL_FIELDS = [
   { key: 'notes',            label: 'ملاحظات',       default: false },
 ];
 
-const REGIONS = ['عسير', 'جيزان', 'الباحة', 'نجران'];
+const REGIONS = ACTIVE_REGIONS;
 
 const defaultGuardFields = new Set(GUARD_FIELDS.filter(f => f.default).map(f => f.key));
 const defaultSchoolFields = new Set(SCHOOL_FIELDS.filter(f => f.default).map(f => f.key));
@@ -187,13 +188,13 @@ export const ExportDataPage: React.FC = () => {
     setter(next);
   };
 
-  const selectAll   = (fields: typeof GUARD_FIELDS, setter: (s: Set<string>) => void) =>
+  const selectAll   = (fields: { key: string }[], setter: (s: Set<string>) => void) =>
     setter(new Set(fields.map(f => f.key)));
   const deselectAll = (setter: (s: Set<string>) => void) => setter(new Set());
 
   // ─── مكون مربع الاختيار ───────────────────────────────────────────────────
-  const FieldCheckbox = ({ fieldKey, label, checked, onToggle }: {
-    fieldKey: string; label: string; checked: boolean; onToggle: () => void;
+  const FieldCheckbox = ({ label, checked, onToggle }: {
+    label: string; checked: boolean; onToggle: () => void;
   }) => (
     <button
       onClick={onToggle}
@@ -360,7 +361,7 @@ export const ExportDataPage: React.FC = () => {
                   {GUARD_FIELDS.filter(f => f.group === group).map(f => (
                     <FieldCheckbox
                       key={f.key}
-                      fieldKey={f.key}
+
                       label={f.label}
                       checked={guardFields.has(f.key)}
                       onToggle={() => toggleField(f.key, guardFields, setGuardFields)}

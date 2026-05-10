@@ -159,9 +159,6 @@ export const AddSchoolModal: React.FC<AddSchoolModalProps> = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 >
                   <option value="عسير">عسير</option>
-                  <option value="جيزان">جيزان</option>
-                  <option value="الباحة">الباحة</option>
-                  <option value="نجران">نجران</option>
                 </select>
               </div>
               
