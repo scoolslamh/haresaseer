@@ -76,6 +76,19 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [guardsList, setGuardsList] = useState<any[]>([]);
   const [, setGuardsLoading] = useState(false);
   const [showSchoolGuardsModal, setShowSchoolGuardsModal] = useState(false);
+  const [availableGovernorates, setAvailableGovernorates] = useState<string[]>([]);
+
+  // جلب المحافظات عند تغيير المنطقة
+  useEffect(() => {
+    if (guardFilters.region && guardFilters.region !== 'all') {
+      SchoolService.getGovernoratesByRegion(guardFilters.region)
+        .then(setAvailableGovernorates)
+        .catch(() => setAvailableGovernorates([]));
+    } else {
+      setAvailableGovernorates([]);
+    }
+  }, [guardFilters.region]);
+
   // تحميل البيانات عند تغيير الفلاتر أو التبويب
   useEffect(() => {
     loadData();
@@ -343,20 +356,6 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
     }
   };
 
-  const getUniqueGovernorates = () => {
-    // هذه دالة مساعدة للحصول على المحافظات حسب المنطقة
-    // يمكن تحسينها لاحقًا لجلب البيانات من الخادم
-    const governoratesByRegion: { [key: string]: string[] } = {
-      عسير: ["أبها", "خميس مشيط", "النماص", "بيشة"],
-      جيزان: ["جيزان", "صبيا", "أبو عريش"],
-      الباحة: ["الباحة", "بلجرشي", "المندق"],
-      نجران: ["نجران", "شرورة"],
-    };
-
-    if (guardFilters.region === "all") return [];
-    return governoratesByRegion[guardFilters.region as keyof typeof governoratesByRegion] || [];
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[95vh] overflow-hidden">
@@ -472,10 +471,8 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent text-sm disabled:bg-gray-100"
                     >
                       <option value="all">جميع المحافظات</option>
-                      {getUniqueGovernorates().map((gov: string) => (
-                        <option key={gov} value={gov}>
-                          {gov}
-                        </option>
+                      {availableGovernorates.map((gov) => (
+                        <option key={gov} value={gov}>{gov}</option>
                       ))}
                     </select>
                   </div>

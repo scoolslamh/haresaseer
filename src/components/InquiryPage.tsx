@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Search,
   Filter,
@@ -14,17 +14,17 @@ import {
   Eye,
   Edit,
   Trash2,
-} from 'lucide-react';
-import { GuardService } from '../services/guardService';
-import { SchoolService } from '../services/schoolService';
-import { Guard, School as SchoolType, GuardFilters } from '../types';
-import { AuthService } from '../services/authService';
-import { GuardForm } from './GuardForm';
-import { GuardDetailsModal } from './GuardDetailsModal';
-import { ExportService } from '../services/exportService';
-import { Pagination } from './Pagination';
-import { ConfirmationMessage } from './ConfirmationMessage';
-import { OperationService } from '../services/operationService';
+} from "lucide-react";
+import { GuardService } from "../services/guardService";
+import { SchoolService } from "../services/schoolService";
+import { Guard, School as SchoolType, GuardFilters } from "../types";
+import { AuthService } from "../services/authService";
+import { GuardForm } from "./GuardForm";
+import { GuardDetailsModal } from "./GuardDetailsModal";
+import { ExportService } from "../services/exportService";
+import { Pagination } from "./Pagination";
+import { ConfirmationMessage } from "./ConfirmationMessage";
+import { OperationService } from "../services/operationService";
 
 export const InquiryPage: React.FC = () => {
   const [schools, setSchools] = useState<SchoolType[]>([]);
@@ -37,7 +37,7 @@ export const InquiryPage: React.FC = () => {
     female: 0,
     insured: 0,
     uninsured: 0,
-    active: 0
+    active: 0,
   });
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
@@ -48,17 +48,19 @@ export const InquiryPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmationText, setConfirmationText] = useState('');
-  const [confirmationType, setConfirmationType] = useState<'success' | 'error'>('success');
-  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [confirmationText, setConfirmationText] = useState("");
+  const [confirmationType, setConfirmationType] = useState<"success" | "error">(
+    "success",
+  );
+  const [localSearchTerm, setLocalSearchTerm] = useState("");
 
   const [filters, setFilters] = useState<GuardFilters>({
-    search: '',
-    region: 'all',
-    governorate: 'all',
-    gender: 'all',
-    insurance: 'all',
-    status: 'all'
+    search: "",
+    region: "all",
+    governorate: "all",
+    gender: "all",
+    insurance: "all",
+    status: "all",
   });
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export const InquiryPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setLocalSearchTerm(filters.search ?? '');
+    setLocalSearchTerm(filters.search ?? "");
   }, [filters.search]);
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export const InquiryPage: React.FC = () => {
       const [schoolsData, guardsResult, statsData] = await Promise.all([
         SchoolService.getAllSchools(),
         GuardService.getFilteredGuards(filters, currentPage, itemsPerPage),
-        GuardService.getGuardsStats()
+        GuardService.getGuardsStats(),
       ]);
 
       setSchools(schoolsData);
@@ -89,8 +91,10 @@ export const InquiryPage: React.FC = () => {
       setPaginatedGuards(guardsResult.guards);
       setOverallStats(statsData);
     } catch (err: any) {
-      setConfirmationText(err instanceof Error ? err.message : 'خطأ في تحميل البيانات');
-      setConfirmationType('error');
+      setConfirmationText(
+        err instanceof Error ? err.message : "خطأ في تحميل البيانات",
+      );
+      setConfirmationType("error");
       setShowConfirmation(true);
     } finally {
       setLoading(false);
@@ -98,22 +102,25 @@ export const InquiryPage: React.FC = () => {
   };
 
   const handlePageChange = (page: number) => setCurrentPage(page);
-  const handleItemsPerPageChange = (newItemsPerPage: number) => { setItemsPerPage(newItemsPerPage); setCurrentPage(1); };
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1);
+  };
 
   const handleFilterChange = (key: keyof GuardFilters, value: string) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
     setCurrentPage(1);
   };
 
   const handleSearchSubmit = () => {
-    handleFilterChange('search', localSearchTerm);
+    handleFilterChange("search", localSearchTerm);
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSearchSubmit();
     }
@@ -121,14 +128,14 @@ export const InquiryPage: React.FC = () => {
 
   const clearFilters = () => {
     setFilters({
-      search: '',
-      region: 'all',
-      governorate: 'all',
-      gender: 'all',
-      insurance: 'all',
-      status: 'all'
-    }); 
-    setLocalSearchTerm('');
+      search: "",
+      region: "all",
+      governorate: "all",
+      gender: "all",
+      insurance: "all",
+      status: "all",
+    });
+    setLocalSearchTerm("");
   };
 
   const handleViewGuard = (guard: Guard) => {
@@ -143,21 +150,26 @@ export const InquiryPage: React.FC = () => {
 
   const handleDeleteGuard = async (id: string, guardName: string) => {
     if (!AuthService.canDelete()) {
-      alert('ليس لديك صلاحية لحذف البيانات');
+      alert("ليس لديك صلاحية لحذف البيانات");
       return;
     }
 
     if (confirm(`هل أنت متأكد من حذف الحارس "${guardName}"؟`)) {
       try {
         await GuardService.deleteGuard(id);
-        await OperationService.logOperation('حذف حارس', `تم حذف الحارس: ${guardName}`);
+        await OperationService.logOperation(
+          "حذف حارس",
+          `تم حذف الحارس: ${guardName}`,
+        );
         await loadData();
         setConfirmationText(`تم حذف الحارس ${guardName} بنجاح`);
-        setConfirmationType('success');
+        setConfirmationType("success");
         setShowConfirmation(true);
       } catch (err: any) {
-        setConfirmationText(err instanceof Error ? err.message : 'خطأ في حذف الحارس');
-        setConfirmationType('error');
+        setConfirmationText(
+          err instanceof Error ? err.message : "خطأ في حذف الحارس",
+        );
+        setConfirmationType("error");
         setShowConfirmation(true);
       }
     }
@@ -175,43 +187,45 @@ export const InquiryPage: React.FC = () => {
       setShowGuardForm(false);
       setSelectedGuard(null);
       await loadData();
-      setConfirmationType('success');
+      setConfirmationType("success");
       setShowConfirmation(true);
     } catch (err: any) {
       throw err;
     }
   };
 
-  const handleExport = async (format: 'excel' | 'pdf') => {
+  const handleExport = async (format: "excel" | "pdf") => {
     try {
       setExporting(true);
-      
+
       const guardsToExport = filteredGuards;
-      
-      if (format === 'excel') {
-        await ExportService.exportToExcel(guardsToExport, 'بيانات_الحراس');
+
+      if (format === "excel") {
+        await ExportService.exportToExcel(guardsToExport, "بيانات_الحراس");
       } else {
-        await ExportService.exportToPDF(guardsToExport, 'بيانات الحراس');
+        await ExportService.exportToPDF(guardsToExport, "بيانات الحراس");
       }
     } catch (err: any) {
-      alert(err instanceof Error ? err.message : 'خطأ في التصدير');
+      alert(err instanceof Error ? err.message : "خطأ في التصدير");
     } finally {
       setExporting(false);
     }
   };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('ar-SA');
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("ar-SA");
   };
 
   const getUniqueGovernorates = () => {
-    if (filters.region === 'all') return [];
-    return [...new Set(
-      schools
-        .filter(school => school.region === filters.region)
-        .map(school => school.governorate)
-    )].sort();
+    if (filters.region === "all") return [];
+    return [
+      ...new Set(
+        schools
+          .filter((school) => school.region === filters.region)
+          .map((school) => school.governorate),
+      ),
+    ].sort();
   };
 
   if (loading) {
@@ -229,24 +243,26 @@ export const InquiryPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <Search className="w-8 h-8 text-moe-900" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">الاستعلام عن الحراس</h1>
+            <h1 className="text-2xl font-bold text-gray-800">
+              الاستعلام عن الحراس
+            </h1>
             <p className="text-gray-600">البحث والتصفية وإدارة بيانات الحراس</p>
           </div>
         </div>
-        
+
         <div className="flex gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              showFilters 
-                ? 'bg-moe-900 text-white' 
-                : 'bg-white text-moe-900 border border-moe-900 hover:bg-moe-50'
+              showFilters
+                ? "bg-moe-900 text-white"
+                : "bg-white text-moe-900 border border-moe-900 hover:bg-moe-50"
             }`}
           >
             <Filter className="w-4 h-4" />
             الفلاتر
           </button>
-          
+
           <button
             onClick={loadData}
             className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -263,57 +279,69 @@ export const InquiryPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-moe-600" />
             <div>
-              <p className="text-2xl font-bold text-moe-600">{overallStats.total}</p>
+              <p className="text-2xl font-bold text-moe-600">
+                {overallStats.total}
+              </p>
               <p className="text-sm text-gray-600">إجمالي الحراس</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="flex items-center gap-3">
             <User className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold text-green-600">{overallStats.male}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {overallStats.male}
+              </p>
               <p className="text-sm text-gray-600">ذكور</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="flex items-center gap-3">
             <User className="w-8 h-8 text-pink-600" />
             <div>
-              <p className="text-2xl font-bold text-pink-600">{overallStats.female}</p>
+              <p className="text-2xl font-bold text-pink-600">
+                {overallStats.female}
+              </p>
               <p className="text-sm text-gray-600">إناث</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-green-600" />
             <div>
-              <p className="text-2xl font-bold text-green-600">{overallStats.insured}</p>
+              <p className="text-2xl font-bold text-green-600">
+                {overallStats.insured}
+              </p>
               <p className="text-sm text-gray-600">يصرف بدل</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-red-600" />
             <div>
-              <p className="text-2xl font-bold text-red-600">{overallStats.uninsured}</p>
-              <p className="text-sm text-gray-600">غير يصرف بدل</p>
+              <p className="text-2xl font-bold text-red-600">
+                {overallStats.uninsured}
+              </p>
+              <p className="text-sm text-gray-600">لا يصرف بدل</p>
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-moe-800" />
             <div>
-              <p className="text-2xl font-bold text-moe-800">{overallStats.active}</p>
+              <p className="text-2xl font-bold text-moe-800">
+                {overallStats.active}
+              </p>
               <p className="text-sm text-gray-600">حراس على رأس العمل</p>
             </div>
           </div>
@@ -332,7 +360,7 @@ export const InquiryPage: React.FC = () => {
               مسح الفلاتر
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             {/* البحث النصي */}
             <div className="xl:col-span-2">
@@ -366,10 +394,10 @@ export const InquiryPage: React.FC = () => {
               <select
                 value={filters.region}
                 onChange={(e) => {
-                  handleFilterChange('region', e.target.value);
+                  handleFilterChange("region", e.target.value);
                   // إعادة تعيين المحافظة عند تغيير المنطقة
-                  if (e.target.value === 'all') {
-                    handleFilterChange('governorate', 'all');
+                  if (e.target.value === "all") {
+                    handleFilterChange("governorate", "all");
                   }
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
@@ -386,13 +414,17 @@ export const InquiryPage: React.FC = () => {
               </label>
               <select
                 value={filters.governorate}
-                onChange={(e) => handleFilterChange('governorate', e.target.value)}
-                disabled={filters.region === 'all'}
+                onChange={(e) =>
+                  handleFilterChange("governorate", e.target.value)
+                }
+                disabled={filters.region === "all"}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent disabled:bg-gray-100"
               >
                 <option value="all">جميع المحافظات</option>
-                {getUniqueGovernorates().map(gov => (
-                  <option key={gov} value={gov}>{gov}</option>
+                {getUniqueGovernorates().map((gov) => (
+                  <option key={gov} value={gov}>
+                    {gov}
+                  </option>
                 ))}
               </select>
             </div>
@@ -404,7 +436,7 @@ export const InquiryPage: React.FC = () => {
               </label>
               <select
                 value={filters.gender}
-                onChange={(e) => handleFilterChange('gender', e.target.value)}
+                onChange={(e) => handleFilterChange("gender", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               >
                 <option value="all">الكل</option>
@@ -420,7 +452,9 @@ export const InquiryPage: React.FC = () => {
               </label>
               <select
                 value={filters.insurance}
-                onChange={(e) => handleFilterChange('insurance', e.target.value)}
+                onChange={(e) =>
+                  handleFilterChange("insurance", e.target.value)
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               >
                 <option value="all">الكل</option>
@@ -436,12 +470,14 @@ export const InquiryPage: React.FC = () => {
               </label>
               <select
                 value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
+                onChange={(e) => handleFilterChange("status", e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent"
               >
                 <option value="all">جميع الحالات</option>
                 <option value="على رأس العمل">على رأس العمل</option>
-                <option value="إجازة أمومة/رعاية مولود">إجازة أمومة/رعاية مولود</option>
+                <option value="إجازة أمومة/رعاية مولود">
+                  إجازة أمومة/رعاية مولود
+                </option>
                 <option value="إجازة مرضية">إجازة مرضية</option>
                 <option value="إيقاف الراتب مؤقتاً">إيقاف الراتب مؤقتاً</option>
                 <option value="مجاز استثنائياً">مجاز استثنائياً</option>
@@ -454,27 +490,29 @@ export const InquiryPage: React.FC = () => {
       )}
 
       {/* Export Buttons */}
-      {(AuthService.hasSpecificPermission('guards.export') || AuthService.hasSpecificPermission('admin')) && filteredGuards.length > 0 && (
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={() => handleExport('excel')}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            {exporting ? 'جاري التصدير...' : 'تصدير Excel'}
-          </button>
-          
-          <button
-            onClick={() => handleExport('pdf')}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            {exporting ? 'جاري التصدير...' : 'تصدير PDF'}
-          </button>
-        </div>
-      )}
+      {(AuthService.hasSpecificPermission("guards.export") ||
+        AuthService.hasSpecificPermission("admin")) &&
+        filteredGuards.length > 0 && (
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              {exporting ? "جاري التصدير..." : "تصدير Excel"}
+            </button>
+
+            <button
+              onClick={() => handleExport("pdf")}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              {exporting ? "جاري التصدير..." : "تصدير PDF"}
+            </button>
+          </div>
+        )}
 
       {/* Results Table */}
       <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -482,22 +520,43 @@ export const InquiryPage: React.FC = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">اسم الحارس</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">المدرسة</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">المنطقة</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">المحافظة</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">الجنس</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">البدل</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">الجوال</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">الحالة</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-700">الإجراءات</th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  اسم الحارس
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  المدرسة
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  المنطقة
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  المحافظة
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  الجنس
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  البدل
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  الجوال
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  الحالة
+                </th>
+                <th className="px-4 py-3 text-right font-medium text-gray-700">
+                  الإجراءات
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedGuards.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
-                    {loading ? 'جاري التحميل...' : 'لا توجد نتائج'}
+                  <td
+                    colSpan={9}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
+                    {loading ? "جاري التحميل..." : "لا توجد نتائج"}
                   </td>
                 </tr>
               ) : (
@@ -509,12 +568,18 @@ export const InquiryPage: React.FC = () => {
                           <User className="w-4 h-4 text-moe-600" />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{guard.guard_name}</p>
+                          <p className="font-medium text-gray-800">
+                            {guard.guard_name}
+                          </p>
                           {guard.civil_id && (
-                            <p className="text-xs text-gray-500">السجل: {guard.civil_id}</p>
+                            <p className="text-xs text-gray-500">
+                              السجل: {guard.civil_id}
+                            </p>
                           )}
                           {guard.job_title && (
-                            <p className="text-xs text-gray-500">المسمى: {guard.job_title}</p>
+                            <p className="text-xs text-gray-500">
+                              المسمى: {guard.job_title}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -523,7 +588,7 @@ export const InquiryPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <School className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-700">
-                          {guard.school?.school_name || 'غير محدد'}
+                          {guard.school?.school_name || "غير محدد"}
                         </span>
                       </div>
                     </td>
@@ -531,55 +596,64 @@ export const InquiryPage: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-700">
-                          {guard.school?.region || '-'}
+                          {guard.school?.region || "-"}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-gray-700">
-                      {guard.school?.governorate || '-'}
+                      {guard.school?.governorate || "-"}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        guard.gender === 'ذكر' 
-                          ? 'bg-moe-100 text-moe-800' 
-                          : guard.gender === 'أنثى'
-                          ? 'bg-pink-100 text-pink-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {guard.gender || 'غير محدد'}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          guard.gender === "ذكر"
+                            ? "bg-moe-100 text-moe-800"
+                            : guard.gender === "أنثى"
+                              ? "bg-pink-100 text-pink-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {guard.gender || "غير محدد"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        guard.insurance === 'يصرف بدل'
-                          ? 'bg-green-100 text-green-800'
-                          : guard.insurance === 'لا يصرف'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {guard.insurance || 'غير محدد'}
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          guard.insurance === "يصرف بدل"
+                            ? "bg-green-100 text-green-800"
+                            : guard.insurance === "لا يصرف"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {guard.insurance || "غير محدد"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       {guard.mobile ? (
                         <div className="flex items-center gap-2">
                           <Phone className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-700" dir="ltr">{guard.mobile}</span>
+                          <span className="text-gray-700" dir="ltr">
+                            {guard.mobile}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-gray-500">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        guard.status === 'على رأس العمل'
-                          ? 'bg-green-100 text-green-800'
-                          : guard.status === 'مكلف داخلي'
-                          ? 'bg-blue-100 text-blue-800'
-                          : guard.status === 'إيقاف الراتب مؤقتاً' || guard.status === 'مكفوف اليد'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          guard.status === "على رأس العمل"
+                            ? "bg-green-100 text-green-800"
+                            : guard.status === "مكلف داخلي"
+                              ? "bg-blue-100 text-blue-800"
+                              : guard.status === "إيقاف الراتب مؤقتاً" ||
+                                  guard.status === "مكفوف اليد"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
                         {guard.status}
                       </span>
                     </td>
@@ -592,8 +666,9 @@ export const InquiryPage: React.FC = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        
-                        {(AuthService.hasSpecificPermission('guards.edit') || AuthService.hasSpecificPermission('admin')) && (
+
+                        {(AuthService.hasSpecificPermission("guards.edit") ||
+                          AuthService.hasSpecificPermission("admin")) && (
                           <button
                             onClick={() => handleEditGuard(guard)}
                             className="p-1 text-green-600 hover:bg-green-50 rounded transition-colors"
@@ -602,10 +677,13 @@ export const InquiryPage: React.FC = () => {
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        
-                        {(AuthService.hasSpecificPermission('guards.delete') || AuthService.hasSpecificPermission('admin')) && (
+
+                        {(AuthService.hasSpecificPermission("guards.delete") ||
+                          AuthService.hasSpecificPermission("admin")) && (
                           <button
-                            onClick={() => handleDeleteGuard(guard.id, guard.guard_name)}
+                            onClick={() =>
+                              handleDeleteGuard(guard.id, guard.guard_name)
+                            }
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                             title="حذف"
                           >
@@ -633,7 +711,8 @@ export const InquiryPage: React.FC = () => {
 
       {/* Results Summary */}
       <div className="text-center text-gray-600">
-        عرض {filteredGuards.length} من أصل {totalGuards} نتيجة مفلترة • إجمالي الحراس في النظام: {overallStats.total}
+        عرض {filteredGuards.length} من أصل {totalGuards} نتيجة مفلترة • إجمالي
+        الحراس في النظام: {overallStats.total}
       </div>
 
       {/* Modals */}

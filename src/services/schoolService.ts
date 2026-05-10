@@ -71,6 +71,13 @@ export class SchoolService {
     }
   }
 
+  static async getGovernoratesByRegion(region: string): Promise<string[]> {
+    let query = supabase.from('schools').select('governorate');
+    if (region && region !== 'all') query = query.eq('region', region);
+    const { data } = await query;
+    return [...new Set((data || []).map((s: any) => s.governorate).filter(Boolean))].sort() as string[];
+  }
+
   static async getSchoolsForExport(filters: { region?: string; status?: string } = {}): Promise<School[]> {
     const pageSize = 1000;
     let page = 1;
