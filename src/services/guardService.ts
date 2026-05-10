@@ -89,7 +89,10 @@ export class GuardService {
         (filters.region && filters.region !== 'all') ||
         (filters.governorate && filters.governorate !== 'all');
 
-      const schoolRelation = 'school:schools(id, school_name, region, governorate, principal_name, principal_mobile, status)';
+      // !inner عند وجود فلتر على المدرسة لضمان إرجاع بيانات المدرسة مع الحارس
+      const schoolRelation = hasSchoolFilters
+        ? 'school:schools!inner(id, school_name, region, governorate, principal_name, principal_mobile, status)'
+        : 'school:schools(id, school_name, region, governorate, principal_name, principal_mobile, status)';
 
       let query = supabase
         .from('guards')
@@ -106,8 +109,8 @@ export class GuardService {
           mobile,
           iban,
           job_title,
-        rank,
-        appointment_category,
+          rank,
+          appointment_category,
           status,
           notes,
           created_at,
