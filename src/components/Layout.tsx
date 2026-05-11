@@ -10,8 +10,10 @@ import {
   Upload,
   UserCheck,
   FileSpreadsheet,
+  ClipboardList,
 } from "lucide-react";
 import { UserProfileDropdown } from "./UserProfileDropdown";
+import { NotificationBell } from "./NotificationBell";
 import { AuthService } from "../services/authService";
 
 interface LayoutProps {
@@ -21,6 +23,7 @@ interface LayoutProps {
   onProfileClick: () => void;
   userPermissions: string[];
   onPermissionsChange: () => void;
+  onNavigateToTasks?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -30,6 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({
   onProfileClick,
   userPermissions,
   onPermissionsChange,
+  onNavigateToTasks,
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -126,6 +130,14 @@ export const Layout: React.FC<LayoutProps> = ({
       visible: hasAnyPermission("guards.export", "reports.export"),
     },
     {
+      id: "tasks",
+      label: "متابعة المعاملات",
+      icon: ClipboardList,
+      color: "text-purple-700",
+      bg: "bg-purple-50",
+      visible: isAdmin || userPermissions.length > 0,
+    },
+    {
       id: "users",
       label: "إدارة المستخدمين",
       icon: UserCheck,
@@ -206,6 +218,9 @@ export const Layout: React.FC<LayoutProps> = ({
               onProfileClick={onProfileClick}
               onLogout={handleLogout}
             />
+            <div className="flex items-center gap-1">
+              <NotificationBell onNavigateToTasks={() => { onPageChange('tasks'); onNavigateToTasks?.(); }} />
+            </div>
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2 rounded-md hover:bg-gray-100"
@@ -221,7 +236,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {/* Desktop Header */}
         <div className="hidden lg:block bg-white shadow-sm border-b px-4 py-3">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
+            <NotificationBell onNavigateToTasks={() => { onPageChange('tasks'); onNavigateToTasks?.(); }} />
             <UserProfileDropdown
               onProfileClick={onProfileClick}
               onLogout={handleLogout}

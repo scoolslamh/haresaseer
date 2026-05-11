@@ -205,3 +205,36 @@ export interface ImportData {
   iban?: string;
   notes?: string;
 }
+
+// ── أنواع المعاملات ────────────────────────────────────────────────────────
+export type TaskPriority = 'عاجل' | 'عادي' | 'منخفض';
+export type TaskStatus   = 'مفتوحة' | 'قيد المتابعة' | 'مغلقة';
+export type TaskUpdateType = 'open' | 'update' | 'close';
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  category: string;
+  created_by: string;
+  created_at: string;
+  closed_by?: string | null;
+  closed_at?: string | null;
+  close_reason?: string | null;
+  creator?: { id: string; full_name: string } | null;
+  closer?:  { id: string; full_name: string } | null;
+  updates_count?: number;
+}
+
+export interface TaskUpdate {
+  id: string;
+  task_id: string;
+  content: string;
+  update_type: TaskUpdateType;
+  created_by: string;
+  created_at: string;
+  author?: { id: string; full_name: string } | null;
+  task?:   { id: string; title: string }     | null;
+}

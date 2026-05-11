@@ -4,6 +4,7 @@ import { RealLoginForm } from './components/RealLoginForm';
 import { Layout } from './components/Layout';
 import { WelcomeMessage } from './components/WelcomeMessage';
 import { ProfileModal } from './components/ProfileModal';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 // تحميل الصفحات عند الطلب فقط بدلاً من تحميلها جميعاً عند البداية
 const Dashboard        = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })));
@@ -13,6 +14,7 @@ const ViolationsPage   = lazy(() => import('./components/ViolationsPage').then(m
 const ImportPage       = lazy(() => import('./components/ImportPage'));
 const UserManagementPage = lazy(() => import('./components/UserManagementPage').then(m => ({ default: m.UserManagementPage })));
 const ExportDataPage     = lazy(() => import('./components/ExportDataPage').then(m => ({ default: m.ExportDataPage })));
+const TasksPage          = lazy(() => import('./components/TasksPage').then(m => ({ default: m.TasksPage })));
 
 function PageLoader() {
   return (
@@ -117,6 +119,8 @@ function App() {
         return <UserManagementPage onPermissionsChange={handlePermissionsChange} />;
       case 'export':
         return <ExportDataPage />;
+      case 'tasks':
+        return <TasksPage />;
       default:
         return <Dashboard />;
     }
@@ -138,13 +142,14 @@ function App() {
   }
 
   return (
-    <>
+    <NotificationProvider>
       <Layout
         currentPage={currentPage}
         onPageChange={setCurrentPage}
         onProfileClick={handleProfileClick}
         userPermissions={userPermissions}
         onPermissionsChange={handlePermissionsChange}
+        onNavigateToTasks={() => setCurrentPage('tasks')}
       >
         <Suspense fallback={<PageLoader />}>
           {renderPage()}
@@ -156,7 +161,7 @@ function App() {
       {showProfile && (
         <ProfileModal onClose={() => setShowProfile(false)} />
       )}
-    </>
+    </NotificationProvider>
   );
 }
 
