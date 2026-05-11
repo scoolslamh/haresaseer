@@ -124,10 +124,20 @@ export class GuardService {
        query = query.eq('school.region', filters.region);
      }
       if (filters.search) {
-        const searchTerm = escapeLikePattern(normalizeArabicText(filters.search));
-        query = query.or(
-          `guard_name.ilike.%${searchTerm}%,civil_id.ilike.%${searchTerm}%,mobile.ilike.%${searchTerm}%`
-        );
+        const raw        = escapeLikePattern(filters.search.trim());
+        const normalized = escapeLikePattern(normalizeArabicText(filters.search.trim()));
+        const orParts = raw !== normalized
+          ? [
+              `guard_name.ilike.%${raw}%`,   `guard_name.ilike.%${normalized}%`,
+              `civil_id.ilike.%${raw}%`,     `civil_id.ilike.%${normalized}%`,
+              `mobile.ilike.%${raw}%`,       `mobile.ilike.%${normalized}%`,
+            ]
+          : [
+              `guard_name.ilike.%${raw}%`,
+              `civil_id.ilike.%${raw}%`,
+              `mobile.ilike.%${raw}%`,
+            ];
+        query = query.or(orParts.join(','));
       }
 
       if (filters.region && filters.region !== 'all') {

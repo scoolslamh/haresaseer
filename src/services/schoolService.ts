@@ -21,12 +21,22 @@ export class SchoolService {
           guards:guards(count)
         `, { count: 'exact' });
 
-      // البحث على السيرفر مباشرة
+      // البحث — نستخدم النص الأصلي والمُطبَّع معاً لتغطية ة/ه والألف وغيرها
       if (filters.search && filters.search.trim()) {
-        const searchTerm = escapeLikePattern(normalizeArabicText(filters.search.trim()));
-        query = query.or(
-          `school_name.ilike.%${searchTerm}%,principal_name.ilike.%${searchTerm}%,governorate.ilike.%${searchTerm}%`
-        );
+        const raw        = escapeLikePattern(filters.search.trim());
+        const normalized = escapeLikePattern(normalizeArabicText(filters.search.trim()));
+        const orParts = raw !== normalized
+          ? [
+              `school_name.ilike.%${raw}%`,        `school_name.ilike.%${normalized}%`,
+              `principal_name.ilike.%${raw}%`,      `principal_name.ilike.%${normalized}%`,
+              `governorate.ilike.%${raw}%`,         `governorate.ilike.%${normalized}%`,
+            ]
+          : [
+              `school_name.ilike.%${raw}%`,
+              `principal_name.ilike.%${raw}%`,
+              `governorate.ilike.%${raw}%`,
+            ];
+        query = query.or(orParts.join(','));
       }
 
       // المنطقة
