@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  AlertTriangle, 
-  Plus, 
-  Search, 
-  Filter, 
+  AlertTriangle,
+  Plus,
+  Search,
+  Filter,
   RefreshCw,
   Eye,
   Edit,
@@ -12,7 +12,8 @@ import {
   User,
   FileText,
   Download,
-  X
+  X,
+  BarChart2
 } from 'lucide-react';
 import { ViolationService } from '../services/violationService';
 import { Violation, Guard } from '../types';
@@ -21,6 +22,7 @@ import { AddViolationModal } from './AddViolationModal';
 import { ExportService } from '../services/exportService';
 import { Pagination } from './Pagination';
 import { supabase } from '../lib/supabase';
+import { GuardViolationsReport } from './GuardViolationsReport';
 
 export const ViolationsPage: React.FC = () => {
   const [violations, setViolations] = useState<Violation[]>([]);
@@ -36,6 +38,7 @@ export const ViolationsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showFilters, setShowFilters] = useState(false);
+  const [showGuardReport, setShowGuardReport] = useState(false);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -217,10 +220,19 @@ export const ViolationsPage: React.FC = () => {
           )}
           
           <button
+            onClick={() => setShowGuardReport(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+            title="تقرير مخالفات حارس"
+          >
+            <BarChart2 className="w-4 h-4" />
+            تقرير حارس
+          </button>
+
+          <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              showFilters 
-                ? 'bg-moe-900 text-white' 
+              showFilters
+                ? 'bg-moe-900 text-white'
                 : 'bg-white text-moe-900 border border-moe-900 hover:bg-moe-50'
             }`}
           >
@@ -525,6 +537,11 @@ export const ViolationsPage: React.FC = () => {
       <div className="text-center text-gray-600">
         إجمالي النتائج: {totalCount} مخالفة
       </div>
+
+      {/* Guard Violations Report */}
+      {showGuardReport && (
+        <GuardViolationsReport onClose={() => setShowGuardReport(false)} />
+      )}
 
       {/* Add Violation Modal */}
       {showAddModal && (
