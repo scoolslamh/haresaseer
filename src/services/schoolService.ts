@@ -18,7 +18,6 @@ export class SchoolService {
           governorate,
           principal_name,
           principal_mobile,
-          file_number,
           status,
           notes,
           created_at,
