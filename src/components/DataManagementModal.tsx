@@ -56,8 +56,10 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [schoolFilters, setSchoolFilters] = useState({
     search: "",
     region: "all",
+    governorate: "all",
     status: "all",
   });
+  const [schoolGovernorates, setSchoolGovernorates] = useState<string[]>([]);
 
   // حالات عامة
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [showSchoolGuardsModal, setShowSchoolGuardsModal] = useState(false);
   const [availableGovernorates, setAvailableGovernorates] = useState<string[]>([]);
 
-  // جلب المحافظات عند تغيير المنطقة
+  // جلب محافظات الحراس عند تغيير المنطقة
   useEffect(() => {
     if (guardFilters.region && guardFilters.region !== 'all') {
       SchoolService.getGovernoratesByRegion(guardFilters.region)
@@ -88,6 +90,18 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
       setAvailableGovernorates([]);
     }
   }, [guardFilters.region]);
+
+  // جلب محافظات المدارس عند تغيير المنطقة
+  useEffect(() => {
+    if (schoolFilters.region && schoolFilters.region !== 'all') {
+      SchoolService.getGovernoratesByRegion(schoolFilters.region)
+        .then(setSchoolGovernorates)
+        .catch(() => setSchoolGovernorates([]));
+    } else {
+      setSchoolGovernorates([]);
+      setSchoolFilters(p => ({ ...p, governorate: 'all' }));
+    }
+  }, [schoolFilters.region]);
 
   // تحميل البيانات عند تغيير الفلاتر أو التبويب
   useEffect(() => {
@@ -188,6 +202,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
     setSchoolFilters({
       search: "",
       region: "all",
+      governorate: "all",
       status: "all",
     });
     setLocalSchoolSearch("");
@@ -799,6 +814,25 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
                     >
                       <option value="all">جميع المناطق</option>
                       <option value="عسير">عسير</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      المحافظة
+                    </label>
+                    <select
+                      value={schoolFilters.governorate}
+                      onChange={(e) =>
+                        handleSchoolFilterChange("governorate", e.target.value)
+                      }
+                      disabled={schoolFilters.region === "all"}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moe-500 focus:border-transparent text-sm disabled:bg-gray-100"
+                    >
+                      <option value="all">جميع المحافظات</option>
+                      {schoolGovernorates.map((gov) => (
+                        <option key={gov} value={gov}>{gov}</option>
+                      ))}
                     </select>
                   </div>
 

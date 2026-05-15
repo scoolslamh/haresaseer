@@ -4,7 +4,7 @@ import { normalizeArabicText, escapeLikePattern } from '../utils/arabicUtils';
 
 export class SchoolService {
   static async getFilteredSchools(
-    filters: { search?: string; region?: string; status?: string } = {},
+    filters: { search?: string; region?: string; governorate?: string; status?: string } = {},
     page: number = 1,
     itemsPerPage: number = 20
   ): Promise<{ schools: School[]; totalCount: number }> {
@@ -46,6 +46,10 @@ export class SchoolService {
       // المنطقة
       if (filters.region && filters.region !== 'all') {
         query = query.eq('region', filters.region);
+      }
+
+      if (filters.governorate && filters.governorate !== 'all') {
+        query = query.eq('governorate', filters.governorate);
       }
 
       // الحالة
