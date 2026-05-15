@@ -17,7 +17,12 @@ export class SchoolService {
           region,
           governorate,
           principal_name,
+          principal_mobile,
+          file_number,
           status,
+          notes,
+          created_at,
+          updated_at,
           guards:guards(count)
         `, { count: 'exact' });
 
